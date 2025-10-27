@@ -1,0 +1,467 @@
+/* =========================
+   THEME VARIABLES
+========================= */
+:root {
+  --primary-color: #00796b;
+  --primary-hover: #004d40;
+  --danger-color: #e53935;
+  --danger-hover: #c62828;
+  --card-bg: #e0f2f1;
+  --text-color: #333;
+  --bg-color: #f4f4f4;
+  --border-color: #ccc;
+}
+
+body.dark-mode {
+  --card-bg: #333;
+  --text-color: #eee;
+  --bg-color: #121212;
+  --border-color: #555;
+}
+
+/* =========================
+   BASE STYLES
+========================= */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+main.tracker {
+  padding: 20px;
+  max-width: 1000px;
+  margin: auto;
+}
+
+/* =========================
+   FORMS
+========================= */
+form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+input, select {
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: border-color 0.3s ease;
+}
+
+input:focus, select:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+button {
+  padding: 10px;
+  font-size: 1rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+/* =========================
+   CARDS & DASHBOARD
+========================= */
+.card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card {
+  background: var(--card-bg);
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: bold;
+  flex: 1 1 150px;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.2s ease;
+}
+
+.card:hover {
+  transform: scale(1.02);
+}
+
+/* =========================
+   TABLE
+========================= */
+.table-section {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  min-width: 600px;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+body.dark-mode tbody tr:nth-child(even) {
+  background-color: #2a2a2a;
+}
+
+/* =========================
+   DELETE BUTTON
+========================= */
+.delete-btn {
+  background-color: var(--danger-color);
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.delete-btn:hover {
+  background-color: var(--danger-hover);
+}
+
+/* =========================
+   EDIT BUTTON
+========================= */
+.edit-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-right: 5px;
+  transition: background-color 0.3s ease;
+}
+
+.edit-btn:hover {
+  background-color: #1976D2;
+}
+
+#cancel-edit-btn,
+#cancel-income-edit-btn,
+#cancel-budget-edit-btn {
+  background-color: #757575;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-left: 10px;
+  transition: background-color 0.3s ease;
+}
+
+#cancel-edit-btn:hover,
+#cancel-income-edit-btn:hover,
+#cancel-budget-edit-btn:hover {
+  background-color: #616161;
+}
+
+/* =========================
+   BUDGET TRACKING
+========================= */
+.budget-card {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.budget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.budget-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.budget-dates {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.budget-amounts {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.over-budget {
+  color: #d32f2f;
+  font-weight: bold;
+}
+
+.under-budget {
+  color: #388e3c;
+  font-weight: bold;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 20px;
+  background: #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4caf50;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.over {
+  background: #f44336;
+}
+
+.budget-percentage {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+
+.budget-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Dark mode support */
+body.dark-mode .budget-card {
+  background: #2c2c2c;
+  border-color: #444;
+}
+
+body.dark-mode .budget-dates {
+  color: #aaa;
+}
+
+body.dark-mode .progress-bar {
+  background: #444;
+}
+
+/* =========================
+   BALANCE CARDS
+========================= */
+.balance-card {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.positive-balance {
+  background: linear-gradient(135deg, #4caf50, #81c784);
+  color: white;
+}
+
+.negative-balance {
+  background: linear-gradient(135deg, #f44336, #e57373);
+  color: white;
+}
+
+#income-card {
+  background: linear-gradient(135deg, #2196f3, #64b5f6);
+  color: white;
+}
+
+/* Dark mode adjustments */
+body.dark-mode .positive-balance {
+  background: linear-gradient(135deg, #2e7d32, #4caf50);
+}
+
+body.dark-mode .negative-balance {
+  background: linear-gradient(135deg, #c62828, #f44336);
+}
+
+body.dark-mode #income-card {
+  background: linear-gradient(135deg, #1565c0, #2196f3);
+}
+
+/* =========================
+   CHARTS
+========================= */
+canvas {
+  background: #fff;
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+body.dark-mode canvas {
+  background-color: #1e1e1e;
+}
+
+/* =========================
+   DARK MODE
+========================= */
+body.dark-mode {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+body.dark-mode header {
+  background-color: var(--primary-hover);
+}
+
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode button {
+  background-color: #333;
+  color: white;
+  border: 1px solid var(--border-color);
+}
+
+/* =========================
+   LOGIN/REGISTER PAGE
+========================= */
+.container {
+  max-width: 400px;
+  margin: 5vh auto;
+  padding: 2rem;
+  background-color: var(--card-bg);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+form h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* =========================
+   UTILITIES
+========================= */
+.hidden {
+  display: none !important;
+}
+
+.centered {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.shadow {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* =========================
+   LOADING STATE
+========================= */
+body.loading::after {
+  content: 'Loading...';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+/* =========================
+   FEATURE 8: TABLE SORTING
+========================= */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 25px;
+}
+
+.sortable:hover {
+  background-color: rgba(0, 121, 107, 0.1);
+}
+
+.sort-arrow {
+  position: absolute;
+  right: 8px;
+  opacity: 0.3;
+  font-size: 0.8rem;
+}
+
+.sortable.sort-asc .sort-arrow::after {
+  content: ' ▲';
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.sortable.sort-desc .sort-arrow::after {
+  content: ' ▼';
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+body.dark-mode .sortable:hover {
+  background-color: rgba(0, 121, 107, 0.2);
+}
+
+/* =========================
+   FEATURE 5 & 6: CHART CONTAINERS
+========================= */
+#pieChart {
+  max-width: 100%;
+  height: auto;
+}
+
+#trendChart {
+  margin-top: 10px;
+}
+
+/* Chart container responsive */
+@media (max-width: 768px) {
+  canvas {
+    height: 300px !important;
+  }
+}
+
+ 

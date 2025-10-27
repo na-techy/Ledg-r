@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Expense Tracker</h1>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+     <span id="welcome-user">Welcome!</span>
+      <button id="logout-btn">Logout</button>
+      <label class="dark-mode-toggle">
+       <input type="checkbox" id="dark-mode" />
+       Dark Mode
+     </label>
+   </div>
+  </header>
+
+  <main class="tracker">
+    <!-- Feature 1: Add/Edit/Delete Expense -->
+    <section class="form-section">
+      <h2>Add Expense</h2>
+      <form id="expense-form">
+        <input type="date" name="date" required />
+        <input type="number" name="amount" placeholder="Amount" required />
+        <select name="category" id="expense-category" required>
+          <option value="" disabled selected>Select Category</option>
+        </select>
+        <input type="text" name="description" placeholder="Description" />
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <!-- Feature 2: Income Tracking -->
+    <section class="form-section">
+      <h2>Add Income</h2>
+      <form id="income-form">
+        <input type="date" name="date" required />
+        <input type="number" name="amount" placeholder="Amount" required />
+        <select name="category" id="income-category" required>
+          <option value="" disabled selected>Select Category</option>
+        </select>
+        <input type="text" name="description" placeholder="Description" />
+        <button type="submit">Add Income</button>
+      </form>
+    </section>
+
+    <!-- Feature 3: Budget Setting -->
+    <section class="form-section">
+      <h2>Set Budget</h2>
+      <form id="budget-form">
+        <select name="period" id="budget-period" required>
+          <option value="" disabled selected>Select Period</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <input type="date" name="start_date" placeholder="Start Date" required />
+        <input type="date" name="end_date" placeholder="End Date" required />
+        <input type="number" name="amount" placeholder="Budget Amount" required />
+        <select name="category" id="budget-category">
+          <option value="all">All Categories</option>
+        </select>
+        <button type="submit">Set Budget</button>
+      </form>
+    </section>
+
+    <!-- Feature 4: Dashboard Summary (with Balance) -->
+    <section class="dashboard-section">
+      <h2>Dashboard Summary</h2>
+      <div id="summary-cards" class="card-grid">
+        <div class="card" id="total-amount">Total: ₱0</div>
+        <div class="card" id="total-count">Entries: 0</div>
+        <div class="card" id="daily-average">Daily Avg: ₱0</div>
+        <div class="card" id="monthly-average">Monthly Avg: ₱0</div>
+        <div class="card" id="yearly-average">Yearly Avg: ₱0</div>
+      </div>
+
+      <!-- Feature 7: Weekly Filter Support -->
+      <div style="margin-bottom: 1rem;">
+        <label for="category-filter">Filter by Category:</label>
+        <select id="category-filter">
+          <option value="all">All</option>
+        </select>
+      </div>
+
+      <!-- Feature 7: Enhanced Filtering with Weekly -->
+      <h3>Filtered Expense View</h3>
+      <div style="margin-bottom: 1rem;">
+        <label for="filter-mode">Mode:</label>
+        <select id="filter-mode">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+        <input type="date" id="filter-date" style="display:inline;" />
+        <input type="week" id="filter-week" style="display:none;" />
+        <input type="month" id="filter-month" style="display:none;" />
+      </div>
+      
+      <!-- Feature 5: Pie Chart -->
+      <div style="max-width: 400px; margin: 20px auto;">
+        <canvas id="pieChart"></canvas>
+      </div>
+
+      <hr />
+
+      <!-- Feature 6: Line Chart -->
+      <h3>Trend Analysis</h3>
+      <div style="margin-bottom: 1rem;">
+        <label for="trend-mode">Trend Period:</label>
+        <select id="trend-mode">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <canvas id="trendChart" width="400" height="200"></canvas>
+
+      <hr />
+
+      <h3>Expense Summary (Bar Chart)</h3>
+      <div style="margin-bottom: 1rem;">
+        <label for="chart-mode">Chart Mode:</label>
+        <select id="chart-mode">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <canvas id="expenseChart" width="400" height="200"></canvas>
+    </section>
+
+    <!-- Feature 3: Budget Tracking Display -->
+    <section class="dashboard-section">
+      <h2>Budget Tracking</h2>
+      <div id="budget-tracking"></div>
+    </section>
+
+    <!-- Feature 1 & 8: Expense Table with Sorting -->
+    <section class="table-section">
+      <h2>Expense Table</h2>
+      <table id="expense-table">
+        <thead>
+          <tr>
+            <th data-sort="date" class="sortable">Date <span class="sort-arrow">↕</span></th>
+            <th data-sort="amount" class="sortable">Amount <span class="sort-arrow">↕</span></th>
+            <th data-sort="category" class="sortable">Category <span class="sort-arrow">↕</span></th>
+            <th data-sort="description" class="sortable">Description <span class="sort-arrow">↕</span></th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Feature 2 & 8: Income Table with Sorting -->
+    <section class="table-section">
+      <h2>Income Table</h2>
+      <table id="income-table">
+        <thead>
+          <tr>
+            <th data-sort="date" class="sortable">Date <span class="sort-arrow">↕</span></th>
+            <th data-sort="amount" class="sortable">Amount <span class="sort-arrow">↕</span></th>
+            <th data-sort="category" class="sortable">Category <span class="sort-arrow">↕</span></th>
+            <th data-sort="description" class="sortable">Description <span class="sort-arrow">↕</span></th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
