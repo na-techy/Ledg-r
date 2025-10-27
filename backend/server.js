@@ -168,7 +168,7 @@ app.delete('/api/income/:id', (req, res) => {
 app.post('/api/budgets', (req, res) => {
   const { user_id, amount, period, start_date, end_date, category } = req.body;
   db.run(
-    `INSERT INTO budgets (user_id, amount, period, start_date, end_date, category) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO budgets (user_id, amount, period, start_date, end_date, category, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)`,
     [user_id, amount, period, start_date, end_date, category || 'all'],
     function (err) {
       if (err) return res.status(500).json({ error: err.message });
@@ -205,6 +205,19 @@ app.put('/api/budgets/:id', (req, res) => {
   );
 });
 
+// End budget (set inactive)
+app.put('/api/budgets/:id/end', (req, res) => {
+  const { id } = req.params;
+  db.run(
+    `UPDATE budgets SET is_active = 0 WHERE id = ?`,
+    [id],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ updated: this.changes });
+    }
+  );
+});
+
 // Delete budget
 app.delete('/api/budgets/:id', (req, res) => {
   db.run(`DELETE FROM budgets WHERE id = ?`, [req.params.id], function (err) {
@@ -213,9 +226,9 @@ app.delete('/api/budgets/:id', (req, res) => {
   });
 });
 
-// Feature 9: Get categories
+// Get categories
 app.get('/api/categories', (req, res) => {
-  const type = req.query.type; // 'expense' or 'income'
+  const type = req.query.type;
   const user_id = req.query.user_id;
   
   let query = `SELECT * FROM categories WHERE (user_id IS NULL OR user_id = ?)`;
@@ -232,7 +245,7 @@ app.get('/api/categories', (req, res) => {
   });
 });
 
-// Feature 9: Add custom category
+// Add custom category
 app.post('/api/categories', (req, res) => {
   const { name, type, user_id } = req.body;
   db.run(

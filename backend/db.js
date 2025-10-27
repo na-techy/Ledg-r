@@ -45,11 +45,12 @@ db.serialize(() => {
       period TEXT NOT NULL,
       start_date TEXT NOT NULL,
       end_date TEXT NOT NULL,
-      category TEXT
+      category TEXT,
+      is_active INTEGER DEFAULT 1
     )
   `);
 
-  // ========== FEATURE 9: Category Table ==========
+  // Category Table
   db.run(`
     CREATE TABLE IF NOT EXISTS categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
