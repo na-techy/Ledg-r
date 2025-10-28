@@ -1000,6 +1000,12 @@ form h2 {
   color: #f4e8d8;
 }
 
+   /* Base fix for all date inputs - add near the top with other input styles */
+input[type="date"] {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* =========================
    MOBILE RESPONSIVE DESIGN
 ========================= */
@@ -1041,6 +1047,7 @@ form h2 {
 .sidebar-overlay.active {
   display: block;
 }
+
 
 /* Mobile Styles */
 @media (max-width: 768px) {
@@ -1148,6 +1155,7 @@ form h2 {
   .dashboard-filters {
     padding: 1rem;
     font-size: 0.9rem;
+    overflow-x: hidden;
   }
   
   .dashboard-filters label {
@@ -1156,9 +1164,11 @@ form h2 {
   }
   
   .dashboard-filters select,
-  .dashboard-filters input {
-    width: 100%;
-    margin: 0 0 0.5rem 0;
+  .dashboard-filters input[type="date"] {
+    width: 100% !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 8px 8px 8px 12px;
   }
   
   .dashboard-filters button {
