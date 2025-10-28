@@ -46,6 +46,23 @@
       <button class="tab-btn" data-tab="charts">Charts & Analysis</button>
     </div>
     <div class="tab-content active" id="dashboard-tab">
+    
+    <!-- Feature 2: Income Tracking (MOVED TO FIRST) -->
+    <section class="form-section collapsed">
+      <h2>Add Income</h2>
+      <div class="form-content">
+        <form id="income-form">
+          <input type="date" name="date" required />
+          <input type="number" name="amount" placeholder="Amount" required />
+          <select name="category" id="income-category" required>
+            <option value="" disabled selected>Select Category</option>
+          </select>
+          <input type="text" name="description" placeholder="Description" />
+          <button type="submit">Add Income</button>
+        </form>
+      </div>
+    </section>
+
     <!-- Feature 1: Add/Edit/Delete Expense --> 
     <section class="form-section collapsed">
       <h2>Add Expense</h2>
@@ -58,22 +75,6 @@
           </select>
           <input type="text" name="description" placeholder="Description" />
           <button type="submit">Add</button>
-        </form>
-      </div>
-    </section>
-
-    <!-- Feature 2: Income Tracking -->
-    <section class="form-section collapsed">
-      <h2>Add Income</h2>
-      <div class="form-content">
-        <form id="income-form">
-          <input type="date" name="date" required />
-          <input type="number" name="amount" placeholder="Amount" required />
-          <select name="category" id="income-category" required>
-            <option value="" disabled selected>Select Category</option>
-          </select>
-          <input type="text" name="description" placeholder="Description" />
-          <button type="submit">Add Income</button>
         </form>
       </div>
     </section>
@@ -123,13 +124,6 @@
       
       <!-- Summary Cards -->
       <div id="summary-cards" class="card-grid"></div>
-      
-      <!-- Action Buttons -->
-      <div class="action-buttons">
-        <button id="show-expense-form">Add Expense</button>
-        <button id="show-income-form">Add Income</button>
-        <button id="show-budget-form">Set Budget</button>
-      </div>
     </section>
 
     <!-- Combined Transaction Table -->
@@ -176,8 +170,6 @@
           <option value="monthly">Monthly</option>
         </select>
       </div>
-
-      
 
       <!-- Charts Grid -->
       <div class="charts-grid">

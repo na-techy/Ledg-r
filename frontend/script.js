@@ -77,25 +77,6 @@ document.querySelectorAll('.form-section h2').forEach(header => {
   });
 });
 
-// Action buttons to show forms
-document.getElementById('show-expense-form').addEventListener('click', () => {
-  const section = document.querySelector('#expense-form').closest('.form-section');
-  section.classList.remove('collapsed');
-  section.scrollIntoView({ behavior: 'smooth' });
-});
-
-document.getElementById('show-income-form').addEventListener('click', () => {
-  const section = document.querySelector('#income-form').closest('.form-section');
-  section.classList.remove('collapsed');
-  section.scrollIntoView({ behavior: 'smooth' });
-});
-
-document.getElementById('show-budget-form').addEventListener('click', () => {
-  const section = document.querySelector('#budget-form').closest('.form-section');
-  section.classList.remove('collapsed');
-  section.scrollIntoView({ behavior: 'smooth' });
-});
-
 // ============================================
 // BUDGET PANEL TOGGLE
 // ============================================
@@ -331,9 +312,13 @@ function renderTransactionTable() {
         
         const budgetRow = document.createElement('tr');
         budgetRow.className = 'budget-row';
+        const isExpired = budget.is_active === 0;
+        const statusText = isExpired ? '(ENDED)' : '';
+        const statusStyle = isExpired ? 'opacity: 0.7; font-style: italic;' : '';
+
         budgetRow.innerHTML = `
-          <td colspan="6">
-            <strong>Budget Period End:</strong> ${budget.period} (${budget.start_date} to ${budget.end_date}) - 
+          <td colspan="6" style="${statusStyle}">
+            <strong>Budget Period ${isExpired ? 'ENDED' : 'End'}:</strong> ${budget.period} (${budget.start_date} to ${budget.end_date}) ${statusText} - 
             ${budget.category} | 
             Budget: ₱${budget.amount.toFixed(2)} | 
             Spent: ₱${spent.toFixed(2)} | 
@@ -626,6 +611,22 @@ function endBudget(id) {
 // BUDGET TRACKING DISPLAY
 // ============================================
 function calculateSpending(budget) {
+  // For daily budgets, only count expenses on the exact end date
+  if (budget.period === 'daily') {
+    const filtered = allExpenses.filter(exp => {
+      const expDate = new Date(exp.date);
+      const endDate = new Date(budget.end_date);
+      
+      const dateMatch = expDate.toISOString().split('T')[0] === endDate.toISOString().split('T')[0];
+      const categoryMatch = budget.category === 'all' || exp.category === budget.category;
+      
+      return dateMatch && categoryMatch;
+    });
+    
+    return filtered.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  }
+  
+  // For weekly/monthly budgets, count all expenses in range
   const filtered = allExpenses.filter(exp => {
     const expDate = new Date(exp.date);
     const startDate = new Date(budget.start_date);
@@ -734,6 +735,17 @@ function updateSummaryCards(expenseData) {
   const yearlyAvg = Object.keys(yearGroups).length > 0
     ? (totalExpenses / Object.keys(yearGroups).length).toFixed(2)
     : 0;
+    // Calculate daily average
+  const dayGroups = {};
+  expenseData.forEach(exp => {
+    const day = exp.date;
+    if (!dayGroups[day]) dayGroups[day] = 0;
+    dayGroups[day] += parseFloat(exp.amount);
+  });
+
+  const dailyAvg = Object.keys(dayGroups).length > 0
+    ? (totalExpenses / Object.keys(dayGroups).length).toFixed(2)
+    : 0;
 
   const summaryCards = document.getElementById('summary-cards');
   summaryCards.innerHTML = `
@@ -751,6 +763,9 @@ function updateSummaryCards(expenseData) {
     </div>
     <div class="card">
       Expense Entries: ${expenseCount}
+    </div>
+    <div class="card">
+      Daily Avg: ₱${dailyAvg}
     </div>
     <div class="card">
       Monthly Avg: ₱${monthlyAvg}
@@ -965,31 +980,34 @@ categoryFilter.addEventListener('change', applyFilters);
 // ============================================
 // BUDGET AUTO-CALCULATION
 // ============================================
-document.getElementById('budget-period').addEventListener('change', function() {
-  const startDateInput = budgetForm.querySelector('input[name="start_date"]');
-  const endDateInput = budgetForm.querySelector('input[name="end_date"]');
+const startDateInput = budgetForm.querySelector('input[name="start_date"]');
+const endDateInput = budgetForm.querySelector('input[name="end_date"]');
+
+// Set placeholder text
+startDateInput.placeholder = 'Start Date';
+endDateInput.placeholder = 'End Date';
+
+const updateEndDate = () => {
+  if (!startDateInput.value) return;
   
-  const updateEndDate = () => {
-    if (!startDateInput.value) return;
-    
-    const period = document.getElementById('budget-period').value;
-    const startDate = new Date(startDateInput.value);
-    let endDate = new Date(startDate);
-    
-    if (period === 'daily') {
-      endDate = new Date(startDate);
-    } else if (period === 'weekly') {
-      endDate.setDate(endDate.getDate() + 6);
-    } else if (period === 'monthly') {
-      endDate.setMonth(endDate.getMonth() + 1);
-      endDate.setDate(endDate.getDate() - 1);
-    }
-    
-    endDateInput.value = endDate.toISOString().split('T')[0];
-  };
+  const period = document.getElementById('budget-period').value;
+  const startDate = new Date(startDateInput.value);
+  let endDate = new Date(startDate);
   
-  startDateInput.addEventListener('change', updateEndDate);
-});
+  if (period === 'daily') {
+    endDate = new Date(startDate);
+  } else if (period === 'weekly') {
+    endDate.setDate(endDate.getDate() + 6);
+  } else if (period === 'monthly') {
+    endDate.setMonth(endDate.getMonth() + 1);
+    endDate.setDate(endDate.getDate() - 1);
+  }
+  
+  endDateInput.value = endDate.toISOString().split('T')[0];
+};
+
+document.getElementById('budget-period').addEventListener('change', updateEndDate);
+startDateInput.addEventListener('change', updateEndDate);
 
 // ============================================
 // DARK MODE

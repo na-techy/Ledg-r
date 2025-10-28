@@ -60,25 +60,25 @@ db.serialize(() => {
     )
   `);
 
+  // Insert default income categories (first)
+  db.run(`
+    INSERT OR IGNORE INTO categories (id, name, type, user_id) VALUES 
+    (1, 'Salary', 'income', NULL),
+    (2, 'Freelance', 'income', NULL),
+    (3, 'Investment', 'income', NULL),
+    (4, 'Gift', 'income', NULL),
+    (5, 'Other', 'income', NULL)
+  `);
+
   // Insert default expense categories
   db.run(`
     INSERT OR IGNORE INTO categories (id, name, type, user_id) VALUES 
-    (1, 'Essentials', 'expense', NULL),
-    (2, 'Mobility', 'expense', NULL),
-    (3, 'Personal & Family', 'expense', NULL),
-    (4, 'Lifestyle & Leisure', 'expense', NULL),
-    (5, 'Work & Education', 'expense', NULL),
-    (6, 'Financial & Giving', 'expense', NULL)
-  `);
-
-  // Insert default income categories
-  db.run(`
-    INSERT OR IGNORE INTO categories (id, name, type, user_id) VALUES 
-    (7, 'Salary', 'income', NULL),
-    (8, 'Freelance', 'income', NULL),
-    (9, 'Investment', 'income', NULL),
-    (10, 'Gift', 'income', NULL),
-    (11, 'Other', 'income', NULL)
+    (6, 'Essentials', 'expense', NULL),
+    (7, 'Mobility', 'expense', NULL),
+    (8, 'Personal & Family', 'expense', NULL),
+    (9, 'Lifestyle & Leisure', 'expense', NULL),
+    (10, 'Work & Education', 'expense', NULL),
+    (11, 'Financial & Giving', 'expense', NULL)
   `);
 });
 
