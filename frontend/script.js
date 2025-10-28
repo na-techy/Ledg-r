@@ -38,9 +38,66 @@ let transactionSortDirection = 'asc';
 const user = JSON.parse(localStorage.getItem('user'));
 if (!user) window.location.href = '/';
 
+// ============================================
+// MOBILE MENU TOGGLE - ADD THIS ENTIRE SECTION
+// ============================================
+// Create hamburger menu button
+const menuToggle = document.createElement('button');
+menuToggle.className = 'menu-toggle';
+menuToggle.innerHTML = '☰';
+menuToggle.setAttribute('aria-label', 'Toggle menu');
+document.body.insertBefore(menuToggle, document.body.firstChild);
+
+// Create overlay for mobile menu
+const sidebarOverlay = document.createElement('div');
+sidebarOverlay.className = 'sidebar-overlay';
+document.body.appendChild(sidebarOverlay);
+
+const sidebar = document.querySelector('.sidebar');
+
+// Toggle sidebar on mobile
+menuToggle.addEventListener('click', () => {
+  sidebar.classList.toggle('active');
+  sidebarOverlay.classList.toggle('active');
+  document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+});
+
+// Close sidebar when clicking overlay
+sidebarOverlay.addEventListener('click', () => {
+  sidebar.classList.remove('active');
+  sidebarOverlay.classList.remove('active');
+  document.body.style.overflow = '';
+});
+
+// Close sidebar when clicking a navigation button
+document.querySelectorAll('.sidebar button').forEach(button => {
+  button.addEventListener('click', () => {
+    if (window.innerWidth <= 768) {
+      sidebar.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  });
+});
+
+// Handle window resize
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (window.innerWidth > 768) {
+      sidebar.classList.remove('active');
+      sidebarOverlay.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }, 250);
+});
+// ============================================
+// END MOBILE MENU TOGGLE
+// ============================================
+
 // Show welcome message
 document.getElementById('welcome-user').textContent = `Welcome, ${user.name}!`;
-
 // ============================================
 // TAB NAVIGATION
 // ============================================
@@ -278,12 +335,39 @@ function sortData(data, column, direction) {
 }
 
 // ============================================
-// RENDER TRANSACTION TABLE (COMBINED) - CORRECTED
+// RENDER TRANSACTION TABLE (FIXED)
 // ============================================
 function renderTransactionTable() {
-  // Combine expenses and income
+  // Get filtered expenses based on current filters
+  const selectedCategory = categoryFilter.value;
+  const startDate = dateFilterStart.value ? new Date(dateFilterStart.value) : null;
+  const endDate = dateFilterEnd.value ? new Date(dateFilterEnd.value) : null;
+  
+  let filteredExpenses = [...allExpenses];
+  
+  // Apply category filter
+  if (selectedCategory !== 'all') {
+    filteredExpenses = filteredExpenses.filter(exp => exp.category === selectedCategory);
+  }
+  
+  // Apply date filter
+  if (startDate || endDate) {
+    filteredExpenses = filteredExpenses.filter(exp => {
+      const expDate = new Date(exp.date);
+      if (startDate && endDate) {
+        return expDate >= startDate && expDate <= endDate;
+      } else if (startDate) {
+        return expDate >= startDate;
+      } else if (endDate) {
+        return expDate <= endDate;
+      }
+      return true;
+    });
+  }
+  
+  // Combine filtered expenses and all income
   const transactions = [
-    ...allExpenses.map(e => ({ ...e, type: 'Expense' })),
+    ...filteredExpenses.map(e => ({ ...e, type: 'Expense' })),
     ...allIncome.map(i => ({ ...i, type: 'Income' }))
   ];
   
@@ -295,18 +379,11 @@ function renderTransactionTable() {
   
   transactionTableBody.innerHTML = '';
   
-  // Group by date for chronological display
-  const dateGroups = {};
-  displayData.forEach(t => {
-    if (!dateGroups[t.date]) dateGroups[t.date] = [];
-    dateGroups[t.date].push(t);
-  });
-  
   // Track which budget periods we've shown
   const shownBudgets = new Set();
   const today = new Date();
   
-  // First, collect all budgets that should be displayed
+  // Collect all budgets that should be displayed
   const budgetsToDisplay = [];
   
   allBudgets.forEach(budget => {
@@ -314,10 +391,6 @@ function renderTransactionTable() {
     const budgetEnd = new Date(budget.end_date);
     const isActive = budget.is_active === 1;
     
-    // Show budget if:
-    // 1. It's inactive (manually ended), OR
-    // 2. Current date is past the end date (auto-ended), OR
-    // 3. There are transactions on or after the end date
     const shouldShow = !isActive || today > budgetEnd || 
                       displayData.some(t => new Date(t.date) >= budgetEnd);
     
@@ -326,7 +399,6 @@ function renderTransactionTable() {
         budget,
         displayDate: !isActive ? budget.end_date : 
                     today > budgetEnd ? budget.end_date : 
-                    // Find the first transaction date on or after budget end
                     displayData.find(t => new Date(t.date) >= budgetEnd)?.date || budget.end_date,
         isActive
       });
@@ -334,21 +406,16 @@ function renderTransactionTable() {
     }
   });
   
-  // Sort budgets by their display date
-  budgetsToDisplay.sort((a, b) => new Date(a.displayDate) - new Date(b.displayDate));
+  budgetsToDisplay.sort((a, b) => new Date(b.displayDate) - new Date(a.displayDate));
   
-  // Create a combined array of transactions and budget rows
   const allRows = [...displayData];
   
-  // Insert budget rows at appropriate positions
   budgetsToDisplay.forEach(({ budget, displayDate, isActive }) => {
     const spent = calculateSpending(budget);
     const percentage = (spent / budget.amount) * 100;
     const isOver = spent > budget.amount;
     
-    // Find the position to insert the budget row
-    // Insert after the last transaction on or before the display date
-    let insertIndex = allRows.findIndex(t => new Date(t.date) > new Date(displayDate));
+    let insertIndex = allRows.findIndex(t => new Date(t.date) < new Date(displayDate));
     if (insertIndex === -1) insertIndex = allRows.length;
     
     const budgetRow = {
@@ -358,16 +425,15 @@ function renderTransactionTable() {
       percentage,
       isOver,
       isActive,
-      sortDate: displayDate // For proper sorting
+      sortDate: displayDate
     };
     
     allRows.splice(insertIndex, 0, budgetRow);
   });
   
-  // Now render all rows
+  // Render all rows
   allRows.forEach(row => {
     if (row.isBudgetRow) {
-      // This is a budget row
       const { budget, spent, percentage, isOver, isActive } = row;
       const isExpired = !isActive;
       const statusText = isExpired ? '(ENDED)' : '';
@@ -391,7 +457,6 @@ function renderTransactionTable() {
       `;
       transactionTableBody.appendChild(budgetRow);
     } else {
-      // This is a regular transaction row
       const transaction = row;
       const isExpense = transaction.type === 'Expense';
       const rowElement = document.createElement('tr');
@@ -412,28 +477,90 @@ function renderTransactionTable() {
 }
 
 // ============================================
-// TABLE SORTING
+// CALCULATE SPENDING (FIXED)
 // ============================================
-function setupTableSorting() {
-  document.querySelectorAll('#transaction-table th.sortable').forEach(th => {
-    th.addEventListener('click', () => {
-      const column = th.getAttribute('data-sort');
-      
-      if (transactionSortColumn === column) {
-        transactionSortDirection = transactionSortDirection === 'asc' ? 'desc' : 'asc';
-      } else {
-        transactionSortColumn = column;
-        transactionSortDirection = 'asc';
-      }
-      
-      document.querySelectorAll('#transaction-table th.sortable').forEach(header => {
-        header.classList.remove('sort-asc', 'sort-desc');
-      });
-      th.classList.add(`sort-${transactionSortDirection}`);
-      
-      renderTransactionTable();
-    });
+function calculateSpending(budget) {
+  const startDate = new Date(budget.start_date);
+  const endDate = new Date(budget.end_date);
+  
+  // Normalize dates to ignore time component
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+  
+  const filtered = allExpenses.filter(exp => {
+    const expDate = new Date(exp.date);
+    expDate.setHours(0, 0, 0, 0);
+    
+    // Check if date is within range
+    const dateInRange = expDate >= startDate && expDate <= endDate;
+    
+    // Check category match
+    const categoryMatch = budget.category === 'all' || exp.category === budget.category;
+    
+    return dateInRange && categoryMatch;
   });
+
+  return filtered.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+}
+
+// ============================================
+// LOAD EXPENSES (ENSURE PROPER CHAIN)
+// ============================================
+function loadExpenses() {
+  fetch(`/api/expenses?user_id=${user.id}`)
+    .then(res => res.json())
+    .then(data => {
+      allExpenses = data;
+      populateCategoryFilter(data);
+      renderTransactionTable(); // Changed from applyFilters()
+      updateSummaryCards(data);
+      loadBudgets();
+    });
+}
+
+// ============================================
+// LOAD INCOME (ENSURE PROPER CHAIN)
+// ============================================
+function loadIncome() {
+  fetch(`/api/income?user_id=${user.id}`)
+    .then(res => res.json())
+    .then(data => {
+      allIncome = data;
+      renderTransactionTable(); // Changed from applyFilters()
+      updateSummaryCards(allExpenses);
+    });
+}
+
+// ============================================
+// APPLY FILTERS (SIMPLIFIED)
+// ============================================
+function applyFilters() {
+  const selectedCategory = categoryFilter.value;
+  const startDate = dateFilterStart.value ? new Date(dateFilterStart.value) : null;
+  const endDate = dateFilterEnd.value ? new Date(dateFilterEnd.value) : null;
+  
+  let filtered = [...allExpenses];
+
+  if (selectedCategory !== 'all') {
+    filtered = filtered.filter(exp => exp.category === selectedCategory);
+  }
+  
+  if (startDate || endDate) {
+    filtered = filtered.filter(exp => {
+      const expDate = new Date(exp.date);
+      if (startDate && endDate) {
+        return expDate >= startDate && expDate <= endDate;
+      } else if (startDate) {
+        return expDate >= startDate;
+      } else if (endDate) {
+        return expDate <= endDate;
+      }
+      return true;
+    });
+  }
+
+  renderTransactionTable();
+  updateSummaryCards(filtered);
 }
 
 // ============================================
@@ -1416,3 +1543,19 @@ loadCategories();
 loadIncome();
 loadExpenses();
 setupTableSorting();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

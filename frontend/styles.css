@@ -206,7 +206,7 @@ body.dark-mode .budget-toggle-section button:hover {
 }
 
 /* =========================
-   BUDGET TOGGLE SECTION FIX
+   BUDGET TOGGLE SECTION - DROPDOWN FIX
 ========================= */
 .budget-toggle-section {
   border-top: 1px solid rgba(244, 232, 216, 0.3);
@@ -249,15 +249,22 @@ body.dark-mode .budget-toggle-section button:hover {
   box-shadow: 0 0 0 3px rgba(244, 232, 216, 0.1);
 }
 
+/* FIX: Dark text for dropdown options in both modes */
 .budget-toggle-section select option {
-  background: var(--wood-dark);
-  color: #f4e8d8;
+  background: #2a2216; /* Dark background */
+  color: #f4e8d8; /* Light text */
   font-family: 'Merriweather', serif;
+  padding: 8px;
 }
 
-/* Ensure dark mode doesn't affect sidebar dropdowns */
-body.dark-mode .budget-toggle-section select,
+/* Ensure dark mode doesn't override the option styling */
 body.dark-mode .budget-toggle-section select option {
+  background: #2a2216;
+  color: #f4e8d8;
+}
+
+/* Keep the select element styling consistent in both modes */
+body.dark-mode .budget-toggle-section select {
   background: rgba(244, 232, 216, 0.15);
   color: #f4e8d8;
   border-color: rgba(244, 232, 216, 0.3);
@@ -266,7 +273,6 @@ body.dark-mode .budget-toggle-section select option {
 body.dark-mode .budget-toggle-section select:hover {
   background: rgba(244, 232, 216, 0.25);
 }
-
 /* =========================
    MAIN CONTENT AREA
 ========================= */
@@ -995,32 +1001,264 @@ form h2 {
 }
 
 /* =========================
-   RESPONSIVE
+   MOBILE RESPONSIVE DESIGN
 ========================= */
+
+/* Hamburger Menu Button */
+.menu-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  background: linear-gradient(135deg, var(--wood-color) 0%, var(--wood-dark) 100%);
+  border: 2px solid #f4e8d8;
+  color: #f4e8d8;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow);
+  line-height: 1;
+}
+
+.menu-toggle:active {
+  transform: scale(0.95);
+}
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
+/* Mobile Styles */
 @media (max-width: 768px) {
+  /* Show hamburger menu */
+  .menu-toggle {
+    display: block;
+  }
+  
+  /* Hide sidebar by default on mobile */
   .sidebar {
-    width: 200px;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    z-index: 150;
+    width: 280px;
   }
   
+  /* Show sidebar when active */
+  .sidebar.active {
+    transform: translateX(0);
+  }
+  
+  /* Main content takes full width */
   main.tracker {
-    margin-left: 200px;
-    width: calc(100% - 200px);
-    padding: 20px;
+    margin-left: 0;
+    width: 100%;
+    padding: 80px 15px 20px 15px;
   }
   
+  /* Budget panel adjustments */
   .budget-tracking-container {
-    width: 300px;
+    width: 90%;
+    max-width: 350px;
+    right: 5%;
+    top: 80px;
+    max-height: calc(100vh - 100px);
   }
   
-  canvas {
-    height: 300px !important;
+  /* Responsive cards */
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
   }
   
+  .card {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Charts grid - single column */
   .charts-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .chart-tile canvas {
+    max-height: 200px;
+  }
+  
+  /* Tab navigation */
+  .tab-navigation {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+  
+  .tab-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Form sections */
+  .form-section h2 {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+  }
+  
+  .form-content {
+    padding: 1rem;
+  }
+  
+  /* Table responsiveness */
+  .table-section {
+    padding: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+  
+  th, td {
+    padding: 8px;
+  }
+  
+  /* Buttons in table */
+  .edit-btn, .delete-btn {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+  }
+  
+  /* Dashboard filters */
+  .dashboard-filters {
+    padding: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .dashboard-filters label {
+    display: block;
+    margin: 0.5rem 0 0.25rem 0;
+  }
+  
+  .dashboard-filters select,
+  .dashboard-filters input {
+    width: 100%;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  .dashboard-filters button {
+    width: 100%;
+    margin: 0.25rem 0;
+  }
+  
+  /* Form inputs */
+  input, select, button {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Logo adjustments */
+  .logo-title {
+    font-size: 2rem;
+  }
+  
+  .logo-L {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+  }
+  
+  .logo-rest {
+    font-size: 1.8rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  main.tracker {
+    padding: 70px 10px 15px 10px;
   }
   
   .card-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: 1fr;
+  }
+  
+  .budget-tracking-container {
+    width: 95%;
+    right: 2.5%;
+  }
+  
+  .form-section h2 {
+    font-size: 1rem;
+  }
+  
+  table {
+    font-size: 0.75rem;
+  }
+  
+  .logo-title {
+    font-size: 1.75rem;
+  }
+  
+  .logo-L {
+    width: 35px;
+    height: 35px;
+    line-height: 35px;
+  }
+  
+  .logo-rest {
+    font-size: 1.5rem;
+  }
+}
+
+/* Landscape mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+  .sidebar {
+    width: 250px;
+    padding: 1rem 0.75rem;
+  }
+  
+  main.tracker {
+    padding: 60px 15px 15px 15px;
+  }
+  
+  .budget-tracking-container {
+    max-height: calc(100vh - 80px);
+    top: 70px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 220px;
+  }
+  
+  main.tracker {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+    padding: 20px 25px;
+  }
+  
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .charts-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
