@@ -9,6 +9,7 @@ const totalCountCard = document.getElementById('total-count');
 const monthlyAvgCard = document.getElementById('monthly-average');
 const yearlyAvgCard = document.getElementById('yearly-average');
 const trendModeSelect = document.getElementById('trend-mode');
+const barCategoryFilter = document.getElementById('bar-category-filter');
 
 // Date filters
 const dateFilterStart = document.getElementById('date-filter-start');
@@ -59,10 +60,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     
     // Render charts if switching to charts tab
     if (targetTab === 'charts') {
-      const chartCategory = chartCategoryFilter.value;
-      let filtered = chartCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === chartCategory);
-      renderChart(filtered, chartModeSelect.value);
-      renderPieChart(filtered);
+      const barCategory = barCategoryFilter.value;
+      let filteredBar = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
+      renderChart(filteredBar, chartModeSelect.value);
+      renderPieChart(allExpenses);
       renderTrendChart(allExpenses, trendModeSelect.value);
     }
   });
@@ -197,6 +198,15 @@ function populateCategoryFilter(data) {
     option.textContent = cat;
     chartCategoryFilter.appendChild(option);
   });
+
+  // Bar chart category filter
+  barCategoryFilter.innerHTML = '<option value="all">All</option>';
+  categories.forEach(cat => {
+    const option = document.createElement('option');
+    option.value = cat;
+    option.textContent = cat;
+    barCategoryFilter.appendChild(option);
+  });
 }
 
 // ============================================
@@ -268,7 +278,7 @@ function sortData(data, column, direction) {
 }
 
 // ============================================
-// RENDER TRANSACTION TABLE (COMBINED)
+// RENDER TRANSACTION TABLE (COMBINED) - CORRECTED
 // ============================================
 function renderTransactionTable() {
   // Combine expenses and income
@@ -285,7 +295,7 @@ function renderTransactionTable() {
   
   transactionTableBody.innerHTML = '';
   
-  // Group by date for budget rows
+  // Group by date for chronological display
   const dateGroups = {};
   displayData.forEach(t => {
     if (!dateGroups[t.date]) dateGroups[t.date] = [];
@@ -294,61 +304,110 @@ function renderTransactionTable() {
   
   // Track which budget periods we've shown
   const shownBudgets = new Set();
+  const today = new Date();
   
-  displayData.forEach((transaction, index) => {
-    // Check if we need to insert a budget row
-    const transactionDate = new Date(transaction.date);
-    allBudgets.forEach(budget => {
-      const budgetStart = new Date(budget.start_date);
-      const budgetEnd = new Date(budget.end_date);
-      const budgetKey = `${budget.id}-${budget.start_date}`;
-      
-      // If transaction is at the end of budget period and we haven't shown this budget yet
-      if (transactionDate.getTime() === budgetEnd.getTime() && !shownBudgets.has(budgetKey)) {
-        shownBudgets.add(budgetKey);
-        const spent = calculateSpending(budget);
-        const percentage = (spent / budget.amount) * 100;
-        const isOver = spent > budget.amount;
-        
-        const budgetRow = document.createElement('tr');
-        budgetRow.className = 'budget-row';
-        const isExpired = budget.is_active === 0;
-        const statusText = isExpired ? '(ENDED)' : '';
-        const statusStyle = isExpired ? 'opacity: 0.7; font-style: italic;' : '';
-
-        budgetRow.innerHTML = `
-          <td colspan="6" style="${statusStyle}">
-            <strong>Budget Period ${isExpired ? 'ENDED' : 'End'}:</strong> ${budget.period} (${budget.start_date} to ${budget.end_date}) ${statusText} - 
-            ${budget.category} | 
-            Budget: ₱${budget.amount.toFixed(2)} | 
-            Spent: ₱${spent.toFixed(2)} | 
-            <span class="${isOver ? 'over-budget' : 'under-budget'}">
-              ${percentage.toFixed(1)}% used
-            </span>
-            <div class="progress-bar" style="display:inline-block; width: 200px; margin-left: 10px;">
-              <div class="progress-fill ${isOver ? 'over' : ''}" style="width: ${Math.min(percentage, 100)}%"></div>
-            </div>
-          </td>
-        `;
-        transactionTableBody.appendChild(budgetRow);
-      }
-    });
+  // First, collect all budgets that should be displayed
+  const budgetsToDisplay = [];
+  
+  allBudgets.forEach(budget => {
+    const budgetKey = `${budget.id}-${budget.start_date}`;
+    const budgetEnd = new Date(budget.end_date);
+    const isActive = budget.is_active === 1;
     
-    // Regular transaction row
-    const row = document.createElement('tr');
-    const isExpense = transaction.type === 'Expense';
-    row.innerHTML = `
-      <td>${transaction.date}</td>
-      <td><span style="color: ${isExpense ? '#e53935' : '#4caf50'}; font-weight: bold;">${transaction.type}</span></td>
-      <td>₱${transaction.amount}</td>
-      <td>${transaction.category}</td>
-      <td>${transaction.description || '-'}</td>
-      <td>
-        <button class="edit-btn" onclick="${isExpense ? 'editExpense' : 'editIncome'}(${transaction.id})">Edit</button>
-        <button class="delete-btn" onclick="${isExpense ? 'deleteExpense' : 'deleteIncome'}(${transaction.id})">Delete</button>
-      </td>
-    `;
-    transactionTableBody.appendChild(row);
+    // Show budget if:
+    // 1. It's inactive (manually ended), OR
+    // 2. Current date is past the end date (auto-ended), OR
+    // 3. There are transactions on or after the end date
+    const shouldShow = !isActive || today > budgetEnd || 
+                      displayData.some(t => new Date(t.date) >= budgetEnd);
+    
+    if (shouldShow && !shownBudgets.has(budgetKey)) {
+      budgetsToDisplay.push({
+        budget,
+        displayDate: !isActive ? budget.end_date : 
+                    today > budgetEnd ? budget.end_date : 
+                    // Find the first transaction date on or after budget end
+                    displayData.find(t => new Date(t.date) >= budgetEnd)?.date || budget.end_date,
+        isActive
+      });
+      shownBudgets.add(budgetKey);
+    }
+  });
+  
+  // Sort budgets by their display date
+  budgetsToDisplay.sort((a, b) => new Date(a.displayDate) - new Date(b.displayDate));
+  
+  // Create a combined array of transactions and budget rows
+  const allRows = [...displayData];
+  
+  // Insert budget rows at appropriate positions
+  budgetsToDisplay.forEach(({ budget, displayDate, isActive }) => {
+    const spent = calculateSpending(budget);
+    const percentage = (spent / budget.amount) * 100;
+    const isOver = spent > budget.amount;
+    
+    // Find the position to insert the budget row
+    // Insert after the last transaction on or before the display date
+    let insertIndex = allRows.findIndex(t => new Date(t.date) > new Date(displayDate));
+    if (insertIndex === -1) insertIndex = allRows.length;
+    
+    const budgetRow = {
+      isBudgetRow: true,
+      budget,
+      spent,
+      percentage,
+      isOver,
+      isActive,
+      sortDate: displayDate // For proper sorting
+    };
+    
+    allRows.splice(insertIndex, 0, budgetRow);
+  });
+  
+  // Now render all rows
+  allRows.forEach(row => {
+    if (row.isBudgetRow) {
+      // This is a budget row
+      const { budget, spent, percentage, isOver, isActive } = row;
+      const isExpired = !isActive;
+      const statusText = isExpired ? '(ENDED)' : '';
+      const statusStyle = isExpired ? 'opacity: 0.7; font-style: italic;' : '';
+      
+      const budgetRow = document.createElement('tr');
+      budgetRow.className = 'budget-row';
+      budgetRow.innerHTML = `
+        <td colspan="6" style="${statusStyle}">
+          <strong>Budget Period ${isExpired ? 'ENDED' : 'End'}:</strong> ${budget.period} (${budget.start_date} to ${budget.end_date}) ${statusText} - 
+          ${budget.category} | 
+          Budget: ₱${budget.amount.toFixed(2)} | 
+          Spent: ₱${spent.toFixed(2)} | 
+          <span class="${isOver ? 'over-budget' : 'under-budget'}">
+            ${percentage.toFixed(1)}% used
+          </span>
+          <div class="progress-bar" style="display:inline-block; width: 200px; margin-left: 10px;">
+            <div class="progress-fill ${isOver ? 'over' : ''}" style="width: ${Math.min(percentage, 100)}%"></div>
+          </div>
+        </td>
+      `;
+      transactionTableBody.appendChild(budgetRow);
+    } else {
+      // This is a regular transaction row
+      const transaction = row;
+      const isExpense = transaction.type === 'Expense';
+      const rowElement = document.createElement('tr');
+      rowElement.innerHTML = `
+        <td>${transaction.date}</td>
+        <td><span style="color: ${isExpense ? '#e53935' : '#4caf50'}; font-weight: bold;">${transaction.type}</span></td>
+        <td>₱${transaction.amount}</td>
+        <td>${transaction.category}</td>
+        <td>${transaction.description || '-'}</td>
+        <td>
+          <button class="edit-btn" onclick="${isExpense ? 'editExpense' : 'editIncome'}(${transaction.id})">Edit</button>
+          <button class="delete-btn" onclick="${isExpense ? 'deleteExpense' : 'deleteIncome'}(${transaction.id})">Delete</button>
+        </td>
+      `;
+      transactionTableBody.appendChild(rowElement);
+    }
   });
 }
 
@@ -776,15 +835,13 @@ function updateSummaryCards(expenseData) {
   `;
 }
 
-// ============================================
-// CHARTS
-// ============================================
 function renderChart(data, mode) {
   const ctx = document.getElementById('expenseChart').getContext('2d');
   if (expenseChartInstance) expenseChartInstance.destroy();
 
   let labels = [];
   let totals = {};
+  let yearLabel = '';
 
   if (mode === 'daily') {
     data.forEach(exp => {
@@ -792,6 +849,65 @@ function renderChart(data, mode) {
       totals[exp.date] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
+    
+    // Format labels as MM/DD
+    const formattedLabels = labels.map(date => {
+      const d = new Date(date);
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${month}/${day}`;
+    });
+    
+    // Get year from first date
+    if (labels.length > 0) {
+      yearLabel = new Date(labels[0]).getFullYear();
+    }
+    
+    expenseChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Daily Expenses',
+          data: labels.map(label => totals[label]),
+          backgroundColor: '#8b4513'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Daily Expense Summary`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                return labels[index]; // Show full date in tooltip
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
   } else if (mode === 'weekly') {
     data.forEach(exp => {
       const date = new Date(exp.date);
@@ -803,41 +919,134 @@ function renderChart(data, mode) {
       totals[weekLabel] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
+    
+    // Format labels as MM/WW
+    const formattedLabels = labels.map(weekLabel => {
+      const [year, week] = weekLabel.split('-W');
+      // Get first day of week to determine month
+      const firstDay = getFirstDayOfWeek(parseInt(year), parseInt(week));
+      const month = String(firstDay.getMonth() + 1).padStart(2, '0');
+      return `${month}/W${week}`;
+    });
+    
+    // Get year from first label
+    if (labels.length > 0) {
+      yearLabel = labels[0].split('-')[0];
+    }
+    
+    expenseChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Weekly Expenses',
+          data: labels.map(label => totals[label]),
+          backgroundColor: '#8b4513'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Weekly Expense Summary`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                return `Week ${labels[index].split('-W')[1]}, ${labels[index].split('-')[0]}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
   } else {
+    // Monthly
     data.forEach(exp => {
       const month = exp.date.slice(0, 7);
       if (!totals[month]) totals[month] = 0;
       totals[month] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
-  }
-
-  expenseChartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: mode === 'daily' ? 'Daily Expenses' : mode === 'weekly' ? 'Weekly Expenses' : 'Monthly Expenses',
-        data: labels.map(label => totals[label]),
-        backgroundColor: '#00796b'
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: `${mode.charAt(0).toUpperCase() + mode.slice(1)} Expense Summary`
-        }
-      },
-      scales: {
-        x: { title: { display: true, text: mode === 'daily' ? 'Date' : mode === 'weekly' ? 'Week' : 'Month' } },
-        y: { title: { display: true, text: 'Amount (₱)' }, beginAtZero: true }
-      }
+    
+    // Format labels as MM
+    const formattedLabels = labels.map(month => {
+      const [year, mon] = month.split('-');
+      return mon;
+    });
+    
+    // Get year from first label
+    if (labels.length > 0) {
+      yearLabel = labels[0].split('-')[0];
     }
-  });
+    
+    expenseChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Monthly Expenses',
+          data: labels.map(label => totals[label]),
+          backgroundColor: '#8b4513'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Monthly Expense Summary`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                const [year, month] = labels[index].split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${monthNames[parseInt(month)-1]} ${year}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
+  }
 }
 
 function renderPieChart(data) {
@@ -854,8 +1063,8 @@ function renderPieChart(data) {
   const values = Object.values(categoryTotals);
   
   const colors = [
-    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
-    '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+    '#8b4513', '#a0522d', '#d2691e', '#cd853f', '#daa520', '#b8860b',
+    '#f4a460', '#d2b48c', '#bc8f8f', '#cd5c5c'
   ];
 
   pieChartInstance = new Chart(ctx, {
@@ -876,7 +1085,7 @@ function renderPieChart(data) {
         },
         title: {
           display: true,
-          text: 'Expenses by Category'
+          text: 'All Expenses by Category'
         }
       }
     }
@@ -889,6 +1098,7 @@ function renderTrendChart(data, mode) {
 
   let labels = [];
   let totals = {};
+  let yearLabel = '';
 
   if (mode === 'daily') {
     data.forEach(exp => {
@@ -896,6 +1106,67 @@ function renderTrendChart(data, mode) {
       totals[exp.date] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
+    
+    // Format labels as MM/WW (month/week number)
+    const formattedLabels = labels.map(date => {
+      const d = new Date(date);
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const week = getWeekNumber(d);
+      return `${month}/W${week}`;
+    });
+    
+    if (labels.length > 0) {
+      yearLabel = new Date(labels[0]).getFullYear();
+    }
+    
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Expense Trend',
+          data: labels.map(label => totals[label]),
+          borderColor: '#8b4513',
+          backgroundColor: 'rgba(139, 69, 19, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Daily Expense Trend`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                return labels[index]; // Show actual date in tooltip
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
   } else if (mode === 'weekly') {
     data.forEach(exp => {
       const date = new Date(exp.date);
@@ -907,44 +1178,137 @@ function renderTrendChart(data, mode) {
       totals[weekLabel] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
+    
+    // Format labels as MM (just month)
+    const formattedLabels = labels.map(weekLabel => {
+      const [year, week] = weekLabel.split('-W');
+      const firstDay = getFirstDayOfWeek(parseInt(year), parseInt(week));
+      const month = String(firstDay.getMonth() + 1).padStart(2, '0');
+      return month;
+    });
+    
+    if (labels.length > 0) {
+      yearLabel = labels[0].split('-')[0];
+    }
+    
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Expense Trend',
+          data: labels.map(label => totals[label]),
+          borderColor: '#8b4513',
+          backgroundColor: 'rgba(139, 69, 19, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Weekly Expense Trend`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                return `Week ${labels[index].split('-W')[1]}, ${labels[index].split('-')[0]}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
   } else {
+    // Monthly
     data.forEach(exp => {
       const month = exp.date.slice(0, 7);
       if (!totals[month]) totals[month] = 0;
       totals[month] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
-  }
-
-  trendChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Expense Trend',
-        data: labels.map(label => totals[label]),
-        borderColor: '#00796b',
-        backgroundColor: 'rgba(0, 121, 107, 0.1)',
-        tension: 0.4,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        title: {
-          display: true,
-          text: `${mode.charAt(0).toUpperCase() + mode.slice(1)} Expense Trend`
-        }
-      },
-      scales: {
-        x: { title: { display: true, text: 'Period' } },
-        y: { title: { display: true, text: 'Amount (₱)' }, beginAtZero: true }
-      }
+    
+    // Format labels as just the year
+    const formattedLabels = labels.map(month => {
+      const year = month.split('-')[0];
+      return year;
+    });
+    
+    if (labels.length > 0) {
+      yearLabel = labels[0].split('-')[0];
     }
-  });
+    
+    trendChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: formattedLabels,
+        datasets: [{
+          label: 'Expense Trend',
+          data: labels.map(label => totals[label]),
+          borderColor: '#8b4513',
+          backgroundColor: 'rgba(139, 69, 19, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Monthly Expense Trend`
+          },
+          tooltip: {
+            callbacks: {
+              title: function(context) {
+                const index = context[0].dataIndex;
+                const [year, month] = labels[index].split('-');
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return `${monthNames[parseInt(month)-1]} ${year}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { 
+            title: { 
+              display: true, 
+              text: `Periods in ${yearLabel}` 
+            } 
+          },
+          y: { 
+            title: { 
+              display: true, 
+              text: 'Amount (₱)' 
+            }, 
+            beginAtZero: true 
+          }
+        }
+      }
+    });
+  }
 }
 
 function getWeekNumber(date) {
@@ -955,20 +1319,26 @@ function getWeekNumber(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
+function getFirstDayOfWeek(year, week) {
+  const date = new Date(year, 0, 1 + (week - 1) * 7);
+  const dayOfWeek = date.getDay();
+  const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  return new Date(date.setDate(diff));
+}
+
 // ============================================
 // CHART CONTROLS
 // ============================================
 chartModeSelect.addEventListener('change', () => {
-  const chartCategory = chartCategoryFilter.value;
-  let filtered = chartCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === chartCategory);
+  const barCategory = barCategoryFilter.value;
+  let filtered = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
   renderChart(filtered, chartModeSelect.value);
 });
 
-chartCategoryFilter.addEventListener('change', () => {
-  const chartCategory = chartCategoryFilter.value;
-  let filtered = chartCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === chartCategory);
+barCategoryFilter.addEventListener('change', () => {
+  const barCategory = barCategoryFilter.value;
+  let filtered = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
   renderChart(filtered, chartModeSelect.value);
-  renderPieChart(filtered);
 });
 
 trendModeSelect.addEventListener('change', () => {
@@ -986,6 +1356,21 @@ const endDateInput = budgetForm.querySelector('input[name="end_date"]');
 // Set placeholder text
 startDateInput.placeholder = 'Start Date';
 endDateInput.placeholder = 'End Date';
+
+const budgetPeriodSelect = document.getElementById('budget-period');
+
+// Handle end date field visibility for daily budget
+budgetPeriodSelect.addEventListener('change', function() {
+  if (this.value === 'daily') {
+    endDateInput.disabled = true;
+    endDateInput.style.opacity = '0.5';
+    endDateInput.style.cursor = 'not-allowed';
+  } else {
+    endDateInput.disabled = false;
+    endDateInput.style.opacity = '1';
+    endDateInput.style.cursor = 'default';
+  }
+});
 
 const updateEndDate = () => {
   if (!startDateInput.value) return;

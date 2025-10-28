@@ -9,7 +9,9 @@
 </head>
 <body>
   <aside class="sidebar">
-    <h1>Ledg-r</h1>
+    <h1 class="logo-title">
+      <span class="logo-L">L</span><span class="logo-rest">edg-r</span>
+    </h1>
     <div class="sidebar-content">
       <span id="welcome-user">Welcome!</span>
       <button id="logout-btn">Logout</button>
@@ -150,17 +152,16 @@
       <h2>Charts & Analysis</h2>
       
       <!-- Chart Controls -->
-      <div class="dashboard-filters">
-        <label for="chart-category-filter">Category:</label>
-        <select id="chart-category-filter">
-          <option value="all">All</option>
-        </select>
-        
-        <label for="chart-mode">Period:</label>
+      <div class="dashboard-filters">       
+        <label for="chart-mode">Bar Chart Period:</label>
         <select id="chart-mode">
           <option value="daily">Daily</option>
           <option value="weekly">Weekly</option>
           <option value="monthly">Monthly</option>
+        </select>
+        <label for="bar-category-filter">Bar Chart Category:</label>
+        <select id="bar-category-filter">
+          <option value="all">All</option>
         </select>
 
         <label for="trend-mode">Trend Period:</label>
@@ -174,18 +175,16 @@
       <!-- Charts Grid -->
       <div class="charts-grid">
         <div class="chart-tile">
-          <h3>Category Breakdown</h3>
-          <canvas id="pieChart"></canvas>
+          <h3>Expense Summary</h3>
+          <canvas id="expenseChart"></canvas>
         </div>
-        
         <div class="chart-tile">
           <h3>Expense Trend</h3>
           <canvas id="trendChart"></canvas>
         </div>
-        
         <div class="chart-tile">
-          <h3>Expense Summary</h3>
-          <canvas id="expenseChart"></canvas>
+          <h3>Category Breakdown</h3>
+          <canvas id="pieChart"></canvas>
         </div>
       </div>
     </div>
