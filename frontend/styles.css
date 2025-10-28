@@ -1,4 +1,9 @@
 /* =========================
+   MEDIEVAL TYPOGRAPHY & LOGO
+========================= */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=MedievalSharp&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&display=swap');
+
+/* =========================
    THEME VARIABLES
 ========================= */
 :root {
@@ -34,13 +39,28 @@ body.dark-mode {
    BASE STYLES
 ========================= */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Merriweather', serif;
+  font-weight: 300;
   margin: 0;
   background-color: var(--bg-color);
   background-image: var(--paper-texture);
   color: var(--text-color);
   transition: background-color 0.3s, color 0.3s;
   display: flex;
+}
+
+/* Headers with medieval feel but good readability */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Cinzel', serif;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Cards and buttons with slight medieval touch */
+.card, button, .form-section h2 {
+  font-family: 'Merriweather', serif;
+  font-weight: 400;
+  letter-spacing: 0.3px;
 }
 
 /* =========================
@@ -68,13 +88,51 @@ body {
   border-right: 3px solid rgba(0,0,0,0.3);
 }
 
-.sidebar h1 {
-  font-size: 2rem;
-  margin: 0 0 2rem 0;
-  text-align: center;
+/* =========================
+   MEDIEVAL LOGO
+========================= */
+.logo-title {
+  font-family: 'Cinzel', serif;
   font-weight: 600;
-  letter-spacing: 1px;
+  font-size: 2.5rem;
+  text-align: center;
+  margin: 0 0 2rem 0;
+  letter-spacing: 2px;
+  position: relative;
+}
+
+.logo-L {
+  display: inline-block;
+  width: 50px;
+  height: 50px;
+  line-height: 50px;
+  background: linear-gradient(135deg, var(--wood-color) 0%, var(--wood-dark) 100%);
+  border: 3px solid #f4e8d8;
+  border-radius: 8px;
+  margin-right: 8px;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.logo-L::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  right: 5px;
+  bottom: 5px;
+  border: 1px solid rgba(244, 232, 216, 0.3);
+  border-radius: 4px;
+}
+
+.logo-rest {
+  font-family: 'MedievalSharp', cursive;
+  font-size: 2.2rem;
+  color: #f4e8d8;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+  letter-spacing: 1px;
 }
 
 .sidebar-content {
@@ -90,19 +148,45 @@ body {
   opacity: 0.9;
 }
 
-.sidebar button {
+/* =========================
+   SIDEBAR BUTTON CONSISTENCY
+========================= */
+.sidebar button,
+.budget-toggle-section button {
   width: 100%;
+  padding: 12px 20px;
   margin-bottom: 0.5rem;
   background: rgba(244, 232, 216, 0.15);
   border: 1px solid rgba(244, 232, 216, 0.3);
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
   color: #f4e8d8;
+  border-radius: 8px;
+  font-family: 'Merriweather', serif;
+  font-size: 1rem;
+  font-weight: 500;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  box-shadow: var(--shadow);
 }
 
-.sidebar button:hover {
+.sidebar button:hover,
+.budget-toggle-section button:hover {
   background: rgba(244, 232, 216, 0.25);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* Dark mode doesn't change sidebar buttons */
+body.dark-mode .sidebar button,
+body.dark-mode .budget-toggle-section button {
+  background: rgba(244, 232, 216, 0.15);
+  color: #f4e8d8;
+  border-color: rgba(244, 232, 216, 0.3);
+}
+
+body.dark-mode .sidebar button:hover,
+body.dark-mode .budget-toggle-section button:hover {
+  background: rgba(244, 232, 216, 0.25);
 }
 
 .dark-mode-toggle {
@@ -121,7 +205,9 @@ body {
   height: 18px;
 }
 
-/* Budget Toggle in Sidebar */
+/* =========================
+   BUDGET TOGGLE SECTION FIX
+========================= */
 .budget-toggle-section {
   border-top: 1px solid rgba(244, 232, 216, 0.3);
   padding-top: 1rem;
@@ -132,18 +218,53 @@ body {
   font-size: 1rem;
   margin-bottom: 0.5rem;
   font-weight: 500;
+  font-family: 'Cinzel', serif;
+  color: #f4e8d8;
 }
 
+/* Make budget dropdown match logout/show budget buttons */
 .budget-toggle-section select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 0.5rem;
   background: rgba(244, 232, 216, 0.15);
   color: #f4e8d8;
   border: 1px solid rgba(244, 232, 216, 0.3);
-  margin-bottom: 0.5rem;
+  border-radius: 8px;
+  font-family: 'Merriweather', serif;
+  font-size: 1rem;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.budget-toggle-section select:hover {
+  background: rgba(244, 232, 216, 0.25);
+  transform: translateY(-2px);
+}
+
+.budget-toggle-section select:focus {
+  outline: none;
+  border-color: rgba(244, 232, 216, 0.5);
+  box-shadow: 0 0 0 3px rgba(244, 232, 216, 0.1);
 }
 
 .budget-toggle-section select option {
   background: var(--wood-dark);
   color: #f4e8d8;
+  font-family: 'Merriweather', serif;
+}
+
+/* Ensure dark mode doesn't affect sidebar dropdowns */
+body.dark-mode .budget-toggle-section select,
+body.dark-mode .budget-toggle-section select option {
+  background: rgba(244, 232, 216, 0.15);
+  color: #f4e8d8;
+  border-color: rgba(244, 232, 216, 0.3);
+}
+
+body.dark-mode .budget-toggle-section select:hover {
+  background: rgba(244, 232, 216, 0.25);
 }
 
 /* =========================
