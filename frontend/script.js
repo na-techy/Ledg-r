@@ -564,21 +564,6 @@ function calculateSpending(budget) {
   return filtered.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
 }
 
-// ============================================
-// LOAD EXPENSES (ENSURE PROPER CHAIN)
-// ============================================
-function loadExpenses() {
-  fetch(`/api/expenses?user_id=${user.id}`)
-    .then(res => res.json())
-    .then(data => {
-      allExpenses = data;
-      populateCategoryFilter(data);
-      renderTransactionTable(); // Changed from applyFilters()
-      updateSummaryCards(data);
-      loadBudgets();
-    });
-}
-
 
 
 // ============================================
