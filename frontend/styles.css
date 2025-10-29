@@ -469,10 +469,10 @@ button:active {
 
 .dashboard-filters select,
 .dashboard-filters input[type="date"] {
-  padding: 10px 12px;
-  min-width: 150px;
-  font-size: 0.95rem;
+  flex-shrink: 1;
+  min-width: 120px;
 }
+
 
 .dashboard-filters button {
   padding: 8px 16px;
