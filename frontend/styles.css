@@ -446,16 +446,29 @@ button:active {
   border: 1px solid var(--border-color);
 }
 
+/* Date Filter for Dashboard */
+.dashboard-filters {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: var(--card-bg);
+  background-image: var(--paper-texture);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
 .dashboard-filters label {
   margin-right: 0.5rem;
   font-weight: 500;
-  display: inline-block;
-  min-width: 120px;
+  white-space: nowrap;
 }
 
 .dashboard-filters select,
-.dashboard-filters input {
-  margin-right: 1rem;
+.dashboard-filters input[type="date"] {
   padding: 10px 12px;
   min-width: 150px;
   font-size: 0.95rem;
@@ -463,15 +476,8 @@ button:active {
 
 .dashboard-filters button {
   padding: 8px 16px;
-  margin-right: 0.5rem;
 }
 
-/* Ensure dropdowns are aligned properly */
-#trend-mode,
-#chart-mode,
-#bar-category-filter {
-  vertical-align: middle;
-}
 
 /* =========================
    TABLE
