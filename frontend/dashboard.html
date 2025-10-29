@@ -55,7 +55,7 @@
       <div class="form-content">
         <form id="income-form">
           <input type="date" name="date" required />
-          <input type="number" name="amount" placeholder="Amount" required />
+          <input type="number" name="amount" placeholder="Amount" min="0.01" step="0.01" required />
           <select name="category" id="income-category" required>
             <option value="" disabled selected>Select Category</option>
           </select>
@@ -71,7 +71,7 @@
       <div class="form-content">
         <form id="expense-form">
           <input type="date" name="date" required />
-          <input type="number" name="amount" placeholder="Amount" required />
+          <input type="number" name="amount" placeholder="Amount" min="0.01" step="0.01" required />
           <select name="category" id="expense-category" required>
             <option value="" disabled selected>Select Category</option>
           </select>
@@ -94,7 +94,7 @@
           </select>
           <input type="date" name="start_date" placeholder="Start Date" required />
           <input type="date" name="end_date" placeholder="End Date" required />
-          <input type="number" name="amount" placeholder="Budget Amount" required />
+          <input type="number" name="amount" placeholder="Budget Amount" min="0.01" step="0.01" required />
           <select name="category" id="budget-category">
             <option value="all">All Categories</option>
           </select>

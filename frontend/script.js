@@ -30,6 +30,7 @@ const budgetForm = document.getElementById('budget-form');
 const budgetTracking = document.getElementById('budget-tracking');
 let allBudgets = [];
 let editingBudgetId = null;
+let currentFilteredExpenses = []; // Track filtered expenses for charts
 
 // Sorting state
 let transactionSortColumn = null;
@@ -98,8 +99,9 @@ window.addEventListener('resize', () => {
 
 // Show welcome message
 document.getElementById('welcome-user').textContent = `Welcome, ${user.name}!`;
+
 // ============================================
-// TAB NAVIGATION
+// TAB NAVIGATION (UPDATED FOR FILTERED CHARTS)
 // ============================================
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -115,13 +117,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
     document.getElementById(`${targetTab}-tab`).classList.add('active');
     
-    // Render charts if switching to charts tab
+    // Render charts with filtered data if switching to charts tab
     if (targetTab === 'charts') {
-      const barCategory = barCategoryFilter.value;
-      let filteredBar = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
-      renderChart(filteredBar, chartModeSelect.value);
-      renderPieChart(allExpenses);
-      renderTrendChart(allExpenses, trendModeSelect.value);
+      updateChartsWithFilteredData();
     }
   });
 });
@@ -158,12 +156,15 @@ budgetPeriodFilter.addEventListener('change', () => {
 });
 
 // ============================================
-// LOAD CATEGORIES
+// LOAD CATEGORIES (WITH ERROR HANDLING)
 // ============================================
 function loadCategories() {
   // Load expense categories
   fetch(`/api/categories?type=expense&user_id=${user.id}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load expense categories');
+      return res.json();
+    })
     .then(data => {
       const expenseCategorySelect = document.getElementById('expense-category');
       const budgetCategorySelect = document.getElementById('budget-category');
@@ -182,11 +183,18 @@ function loadCategories() {
         option2.textContent = cat.name;
         budgetCategorySelect.appendChild(option2);
       });
+    })
+    .catch(err => {
+      console.error('Error loading expense categories:', err);
+      alert('Failed to load expense categories. Please refresh the page.');
     });
 
   // Load income categories
   fetch(`/api/categories?type=income&user_id=${user.id}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load income categories');
+      return res.json();
+    })
     .then(data => {
       const incomeCategorySelect = document.getElementById('income-category');
       incomeCategorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
@@ -197,38 +205,78 @@ function loadCategories() {
         option.textContent = cat.name;
         incomeCategorySelect.appendChild(option);
       });
+    })
+    .catch(err => {
+      console.error('Error loading income categories:', err);
+      alert('Failed to load income categories. Please refresh the page.');
     });
 }
 
 // ============================================
-// LOAD DATA
+// LOAD EXPENSES (WITH CHART UPDATE)
 // ============================================
 function loadExpenses() {
   fetch(`/api/expenses?user_id=${user.id}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load expenses');
+      return res.json();
+    })
     .then(data => {
       allExpenses = data;
       populateCategoryFilter(data);
-      applyFilters();
+      renderTransactionTable();
+      updateSummaryCards(data);
       loadBudgets();
+      
+      // Update charts if on charts tab
+      const chartsTab = document.getElementById('charts-tab');
+      if (chartsTab && chartsTab.classList.contains('active')) {
+        // Reapply filters to update currentFilteredExpenses
+        applyFilters();
+      }
+    })
+    .catch(err => {
+      console.error('Error loading expenses:', err);
+      alert('Failed to load expenses. Please refresh the page.');
     });
 }
 
+// ============================================
+// LOAD INCOME (WITH ERROR HANDLING)
+// ============================================
 function loadIncome() {
   fetch(`/api/income?user_id=${user.id}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load income');
+      return res.json();
+    })
     .then(data => {
       allIncome = data;
-      applyFilters();
+      renderTransactionTable();
+      updateSummaryCards(allExpenses);
+    })
+    .catch(err => {
+      console.error('Error loading income:', err);
+      alert('Failed to load income. Please refresh the page.');
     });
 }
 
+// ============================================
+// LOAD BUDGETS (WITH ERROR HANDLING)
+// ============================================
 function loadBudgets() {
   fetch(`/api/budgets?user_id=${user.id}`)
-    .then(res => res.json())
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to load budgets');
+      return res.json();
+    })
     .then(data => {
       allBudgets = data;
       renderBudgetTracking(data);
+    })
+    .catch(err => {
+      console.error('Error loading budgets:', err);
+      alert('Failed to load budgets. Please refresh the page.');
     });
 }
 
@@ -277,7 +325,7 @@ clearDateFilterBtn.addEventListener('click', () => {
 });
 
 // ============================================
-// APPLY FILTERS
+// APPLY FILTERS (UPDATED TO SAVE FILTERED DATA)
 // ============================================
 function applyFilters() {
   const selectedCategory = categoryFilter.value;
@@ -286,12 +334,10 @@ function applyFilters() {
   
   let filtered = [...allExpenses];
 
-  // Category filter
   if (selectedCategory !== 'all') {
     filtered = filtered.filter(exp => exp.category === selectedCategory);
   }
   
-  // Date filter
   if (startDate || endDate) {
     filtered = filtered.filter(exp => {
       const expDate = new Date(exp.date);
@@ -306,8 +352,29 @@ function applyFilters() {
     });
   }
 
+  // Save filtered data for charts
+  currentFilteredExpenses = filtered;
+
   renderTransactionTable();
   updateSummaryCards(filtered);
+  
+  // Update charts if on charts tab
+  const chartsTab = document.getElementById('charts-tab');
+  if (chartsTab && chartsTab.classList.contains('active')) {
+    updateChartsWithFilteredData();
+  }
+}
+
+// ============================================
+// UPDATE CHARTS WITH FILTERED DATA
+// ============================================
+function updateChartsWithFilteredData() {
+  const barCategory = barCategoryFilter.value;
+  let barFiltered = barCategory === 'all' ? currentFilteredExpenses : currentFilteredExpenses.filter(e => e.category === barCategory);
+  
+  renderChart(barFiltered, chartModeSelect.value);
+  renderPieChart(currentFilteredExpenses);
+  renderTrendChart(currentFilteredExpenses, trendModeSelect.value);
 }
 
 // ============================================
@@ -477,22 +544,16 @@ function renderTransactionTable() {
 }
 
 // ============================================
-// CALCULATE SPENDING (FIXED)
+// CALCULATE SPENDING (FIXED - STRING COMPARISON)
 // ============================================
 function calculateSpending(budget) {
-  const startDate = new Date(budget.start_date);
-  const endDate = new Date(budget.end_date);
-  
-  // Normalize dates to ignore time component
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
+  // Use string comparison to avoid timezone issues
+  const startDate = budget.start_date; // Format: YYYY-MM-DD
+  const endDate = budget.end_date;     // Format: YYYY-MM-DD
   
   const filtered = allExpenses.filter(exp => {
-    const expDate = new Date(exp.date);
-    expDate.setHours(0, 0, 0, 0);
-    
-    // Check if date is within range
-    const dateInRange = expDate >= startDate && expDate <= endDate;
+    // String comparison works because dates are in YYYY-MM-DD format
+    const dateInRange = exp.date >= startDate && exp.date <= endDate;
     
     // Check category match
     const categoryMatch = budget.category === 'all' || exp.category === budget.category;
@@ -518,79 +579,72 @@ function loadExpenses() {
     });
 }
 
-// ============================================
-// LOAD INCOME (ENSURE PROPER CHAIN)
-// ============================================
-function loadIncome() {
-  fetch(`/api/income?user_id=${user.id}`)
-    .then(res => res.json())
-    .then(data => {
-      allIncome = data;
-      renderTransactionTable(); // Changed from applyFilters()
-      updateSummaryCards(allExpenses);
-    });
-}
 
-// ============================================
-// APPLY FILTERS (SIMPLIFIED)
-// ============================================
-function applyFilters() {
-  const selectedCategory = categoryFilter.value;
-  const startDate = dateFilterStart.value ? new Date(dateFilterStart.value) : null;
-  const endDate = dateFilterEnd.value ? new Date(dateFilterEnd.value) : null;
-  
-  let filtered = [...allExpenses];
-
-  if (selectedCategory !== 'all') {
-    filtered = filtered.filter(exp => exp.category === selectedCategory);
-  }
-  
-  if (startDate || endDate) {
-    filtered = filtered.filter(exp => {
-      const expDate = new Date(exp.date);
-      if (startDate && endDate) {
-        return expDate >= startDate && expDate <= endDate;
-      } else if (startDate) {
-        return expDate >= startDate;
-      } else if (endDate) {
-        return expDate <= endDate;
-      }
-      return true;
-    });
-  }
-
-  renderTransactionTable();
-  updateSummaryCards(filtered);
-}
 
 // ============================================
 // EXPENSE FORM SUBMISSION
 // ============================================
 let editingExpenseId = null;
 
+// ============================================
+// EXPENSE FORM SUBMISSION (WITH LOADING STATE)
+// ============================================
 form.addEventListener('submit', e => {
   e.preventDefault();
   const formData = new FormData(form);
   const data = Object.fromEntries(formData.entries());
   data.user_id = user.id;
 
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  
+  // Disable button and show loading state
+  submitBtn.disabled = true;
+  submitBtn.textContent = editingExpenseId ? 'Updating...' : 'Adding...';
+
   if (editingExpenseId) {
     fetch(`/api/expenses/${editingExpenseId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update expense');
+      return res.json();
+    })
+    .then(() => {
       cancelEdit();
       loadExpenses();
+    })
+    .catch(err => {
+      console.error('Error updating expense:', err);
+      alert('Failed to update expense. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   } else {
     fetch('/api/expenses', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to add expense');
+      return res.json();
+    })
+    .then(() => {
       form.reset();
       loadExpenses();
+    })
+    .catch(err => {
+      console.error('Error adding expense:', err);
+      alert('Failed to add expense. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   }
 });
@@ -634,12 +688,21 @@ function deleteExpense(id) {
   if (confirm('Delete this expense?')) {
     fetch(`/api/expenses/${id}`, {
       method: 'DELETE'
-    }).then(() => loadExpenses());
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to delete expense');
+      return res.json();
+    })
+    .then(() => loadExpenses())
+    .catch(err => {
+      console.error('Error deleting expense:', err);
+      alert('Failed to delete expense. Please try again.');
+    });
   }
 }
 
 // ============================================
-// INCOME FORM SUBMISSION
+// INCOME FORM SUBMISSION (WITH LOADING STATE)
 // ============================================
 incomeForm.addEventListener('submit', e => {
   e.preventDefault();
@@ -647,23 +710,56 @@ incomeForm.addEventListener('submit', e => {
   const data = Object.fromEntries(formData.entries());
   data.user_id = user.id;
 
+  const submitBtn = incomeForm.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  
+  // Disable button and show loading state
+  submitBtn.disabled = true;
+  submitBtn.textContent = editingIncomeId ? 'Updating...' : 'Adding...';
+
   if (editingIncomeId) {
     fetch(`/api/income/${editingIncomeId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update income');
+      return res.json();
+    })
+    .then(() => {
       cancelIncomeEdit();
       loadIncome();
+    })
+    .catch(err => {
+      console.error('Error updating income:', err);
+      alert('Failed to update income. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   } else {
     fetch('/api/income', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to add income');
+      return res.json();
+    })
+    .then(() => {
       incomeForm.reset();
       loadIncome();
+    })
+    .catch(err => {
+      console.error('Error adding income:', err);
+      alert('Failed to add income. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   }
 });
@@ -707,12 +803,38 @@ function deleteIncome(id) {
   if (confirm('Delete this income?')) {
     fetch(`/api/income/${id}`, {
       method: 'DELETE'
-    }).then(() => loadIncome());
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to delete income');
+      return res.json();
+    })
+    .then(() => loadIncome())
+    .catch(err => {
+      console.error('Error deleting income:', err);
+      alert('Failed to delete income. Please try again.');
+    });
   }
 }
 
 // ============================================
-// BUDGET FORM SUBMISSION
+// VALIDATE BUDGET DATES
+// ============================================
+function validateBudgetDates(startDate, endDate) {
+  if (!startDate || !endDate) {
+    alert('Please select both start and end dates.');
+    return false;
+  }
+  
+  if (endDate < startDate) {
+    alert('End date cannot be before start date.');
+    return false;
+  }
+  
+  return true;
+}
+
+// ============================================
+// BUDGET FORM SUBMISSION (WITH LOADING STATE)
 // ============================================
 budgetForm.addEventListener('submit', e => {
   e.preventDefault();
@@ -720,23 +842,61 @@ budgetForm.addEventListener('submit', e => {
   const data = Object.fromEntries(formData.entries());
   data.user_id = user.id;
 
+   // ADD THIS VALIDATION CHECK
+  if (!validateBudgetDates(data.start_date, data.end_date)) {
+    return; // Stop submission if validation fails
+  }
+
+  const submitBtn = budgetForm.querySelector('button[type="submit"]');
+  const originalText = submitBtn.textContent;
+  
+  // Disable button and show loading state
+  submitBtn.disabled = true;
+  submitBtn.textContent = editingBudgetId ? 'Updating...' : 'Setting...';
+
   if (editingBudgetId) {
     fetch(`/api/budgets/${editingBudgetId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to update budget');
+      return res.json();
+    })
+    .then(() => {
       cancelBudgetEdit();
       loadBudgets();
+    })
+    .catch(err => {
+      console.error('Error updating budget:', err);
+      alert('Failed to update budget. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   } else {
     fetch('/api/budgets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
-    }).then(() => {
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to create budget');
+      return res.json();
+    })
+    .then(() => {
       budgetForm.reset();
       loadBudgets();
+    })
+    .catch(err => {
+      console.error('Error creating budget. Please try again.');
+      alert('Failed to create budget. Please try again.');
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalText;
     });
   }
 });
@@ -775,13 +935,28 @@ function cancelBudgetEdit() {
   budgetForm.querySelector('button[type="submit"]').textContent = 'Set Budget';
   const cancelBtn = document.getElementById('cancel-budget-edit-btn');
   if (cancelBtn) cancelBtn.remove();
+  
+  // Reset end date field state
+  const endDateField = budgetForm.querySelector('input[name="end_date"]');
+  endDateField.disabled = false;
+  endDateField.style.opacity = '1';
+  endDateField.style.cursor = 'default';
 }
 
 function deleteBudget(id) {
   if (confirm('Delete this budget?')) {
     fetch(`/api/budgets/${id}`, {
       method: 'DELETE'
-    }).then(() => loadBudgets());
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to delete budget');
+      return res.json();
+    })
+    .then(() => loadBudgets())
+    .catch(err => {
+      console.error('Error deleting budget:', err);
+      alert('Failed to delete budget. Please try again.');
+    });
   }
 }
 
@@ -789,7 +964,16 @@ function endBudget(id) {
   if (confirm('End this budget period?')) {
     fetch(`/api/budgets/${id}/end`, {
       method: 'PUT'
-    }).then(() => loadBudgets());
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to end budget');
+      return res.json();
+    })
+    .then(() => loadBudgets())
+    .catch(err => {
+      console.error('Error ending budget:', err);
+      alert('Failed to end budget. Please try again.');
+    });
   }
 }
 
@@ -827,6 +1011,9 @@ function calculateSpending(budget) {
   return filtered.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
 }
 
+// ============================================
+// BUDGET TRACKING DISPLAY (FIXED - NO RACE CONDITION)
+// ============================================
 function renderBudgetTracking(budgets) {
   const filterPeriod = budgetPeriodFilter.value;
   
@@ -835,16 +1022,39 @@ function renderBudgetTracking(budgets) {
     filtered = budgets.filter(b => b.period === filterPeriod);
   }
   
-  // Check and auto-end expired budgets
-  const today = new Date();
+  // Check and auto-end expired budgets (improved logic)
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const budgetsToEnd = [];
+  
   filtered.forEach(budget => {
-    const endDate = new Date(budget.end_date);
-    if (budget.is_active && today > endDate) {
-      fetch(`/api/budgets/${budget.id}/end`, { method: 'PUT' })
-        .then(() => loadBudgets());
+    if (budget.is_active && today > budget.end_date) {
+      budgetsToEnd.push(budget.id);
     }
   });
   
+  // End all expired budgets in one batch, then reload once
+  if (budgetsToEnd.length > 0) {
+    Promise.all(
+      budgetsToEnd.map(id => 
+        fetch(`/api/budgets/${id}/end`, { method: 'PUT' })
+      )
+    ).then(() => {
+      // Only reload once after all budgets are ended
+      loadBudgets();
+    }).catch(err => {
+      console.error('Error auto-ending budgets:', err);
+      // Still render the current state even if auto-end fails
+      renderBudgetCards(filtered);
+    });
+    return; // Exit early, loadBudgets() will call this function again
+  }
+  
+  // Render the budget cards
+  renderBudgetCards(filtered);
+}
+
+// Helper function to render budget cards (extracted from renderBudgetTracking)
+function renderBudgetCards(filtered) {
   if (filtered.length === 0) {
     budgetTracking.innerHTML = '<p style="padding: 1rem; text-align: center;">No budgets found.</p>';
     return;
@@ -962,6 +1172,9 @@ function updateSummaryCards(expenseData) {
   `;
 }
 
+// ============================================
+// RENDER CHART (FIXED LABEL FORMATTING)
+// ============================================
 function renderChart(data, mode) {
   const ctx = document.getElementById('expenseChart').getContext('2d');
   if (expenseChartInstance) expenseChartInstance.destroy();
@@ -977,17 +1190,17 @@ function renderChart(data, mode) {
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as MM/DD
+    // Format labels as MM/DD for daily view
     const formattedLabels = labels.map(date => {
-      const d = new Date(date);
+      const d = new Date(date + 'T00:00:00'); // Ensure local timezone
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${month}/${day}`;
     });
     
-    // Get year from first date
     if (labels.length > 0) {
-      yearLabel = new Date(labels[0]).getFullYear();
+      const firstDate = new Date(labels[0] + 'T00:00:00');
+      yearLabel = firstDate.getFullYear();
     }
     
     expenseChartInstance = new Chart(ctx, {
@@ -1007,13 +1220,13 @@ function renderChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Daily Expense Summary`
+            text: `Daily Expense Summary (${yearLabel})`
           },
           tooltip: {
             callbacks: {
               title: function(context) {
                 const index = context[0].dataIndex;
-                return labels[index]; // Show full date in tooltip
+                return labels[index]; // Show full date YYYY-MM-DD
               }
             }
           }
@@ -1022,7 +1235,7 @@ function renderChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Date (MM/DD)' 
             } 
           },
           y: { 
@@ -1037,7 +1250,7 @@ function renderChart(data, mode) {
     });
   } else if (mode === 'weekly') {
     data.forEach(exp => {
-      const date = new Date(exp.date);
+      const date = new Date(exp.date + 'T00:00:00');
       const weekNum = getWeekNumber(date);
       const year = date.getFullYear();
       const weekLabel = `${year}-W${weekNum}`;
@@ -1047,16 +1260,12 @@ function renderChart(data, mode) {
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as MM/WW
+    // Format labels as "Week N" for weekly view
     const formattedLabels = labels.map(weekLabel => {
-      const [year, week] = weekLabel.split('-W');
-      // Get first day of week to determine month
-      const firstDay = getFirstDayOfWeek(parseInt(year), parseInt(week));
-      const month = String(firstDay.getMonth() + 1).padStart(2, '0');
-      return `${month}/W${week}`;
+      const weekNum = weekLabel.split('-W')[1];
+      return `W${weekNum}`;
     });
     
-    // Get year from first label
     if (labels.length > 0) {
       yearLabel = labels[0].split('-')[0];
     }
@@ -1078,7 +1287,7 @@ function renderChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Weekly Expense Summary`
+            text: `Weekly Expense Summary (${yearLabel})`
           },
           tooltip: {
             callbacks: {
@@ -1093,7 +1302,7 @@ function renderChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Week Number' 
             } 
           },
           y: { 
@@ -1107,21 +1316,21 @@ function renderChart(data, mode) {
       }
     });
   } else {
-    // Monthly
+    // Monthly mode
     data.forEach(exp => {
-      const month = exp.date.slice(0, 7);
+      const month = exp.date.slice(0, 7); // YYYY-MM
       if (!totals[month]) totals[month] = 0;
       totals[month] += parseFloat(exp.amount);
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as MM
+    // Format labels as "MMM" (Jan, Feb, etc) for monthly view
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const formattedLabels = labels.map(month => {
-      const [year, mon] = month.split('-');
-      return mon;
+      const monthNum = parseInt(month.split('-')[1]) - 1;
+      return monthNames[monthNum];
     });
     
-    // Get year from first label
     if (labels.length > 0) {
       yearLabel = labels[0].split('-')[0];
     }
@@ -1143,14 +1352,13 @@ function renderChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Monthly Expense Summary`
+            text: `Monthly Expense Summary (${yearLabel})`
           },
           tooltip: {
             callbacks: {
               title: function(context) {
                 const index = context[0].dataIndex;
                 const [year, month] = labels[index].split('-');
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 return `${monthNames[parseInt(month)-1]} ${year}`;
               }
             }
@@ -1160,7 +1368,7 @@ function renderChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Month' 
             } 
           },
           y: { 
@@ -1219,6 +1427,9 @@ function renderPieChart(data) {
   });
 }
 
+// ============================================
+// RENDER TREND CHART (FIXED LABEL FORMATTING)
+// ============================================
 function renderTrendChart(data, mode) {
   const ctx = document.getElementById('trendChart').getContext('2d');
   if (trendChartInstance) trendChartInstance.destroy();
@@ -1234,16 +1445,16 @@ function renderTrendChart(data, mode) {
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as MM/WW (month/week number)
+    // Format labels as MM/DD for daily trend
     const formattedLabels = labels.map(date => {
-      const d = new Date(date);
+      const d = new Date(date + 'T00:00:00');
       const month = String(d.getMonth() + 1).padStart(2, '0');
-      const week = getWeekNumber(d);
-      return `${month}/W${week}`;
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${month}/${day}`;
     });
     
     if (labels.length > 0) {
-      yearLabel = new Date(labels[0]).getFullYear();
+      yearLabel = new Date(labels[0] + 'T00:00:00').getFullYear();
     }
     
     trendChartInstance = new Chart(ctx, {
@@ -1251,7 +1462,7 @@ function renderTrendChart(data, mode) {
       data: {
         labels: formattedLabels,
         datasets: [{
-          label: 'Expense Trend',
+          label: 'Daily Expense Trend',
           data: labels.map(label => totals[label]),
           borderColor: '#8b4513',
           backgroundColor: 'rgba(139, 69, 19, 0.1)',
@@ -1266,13 +1477,13 @@ function renderTrendChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Daily Expense Trend`
+            text: `Daily Expense Trend (${yearLabel})`
           },
           tooltip: {
             callbacks: {
               title: function(context) {
                 const index = context[0].dataIndex;
-                return labels[index]; // Show actual date in tooltip
+                return labels[index]; // Show full date
               }
             }
           }
@@ -1281,7 +1492,7 @@ function renderTrendChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Date (MM/DD)' 
             } 
           },
           y: { 
@@ -1296,7 +1507,7 @@ function renderTrendChart(data, mode) {
     });
   } else if (mode === 'weekly') {
     data.forEach(exp => {
-      const date = new Date(exp.date);
+      const date = new Date(exp.date + 'T00:00:00');
       const weekNum = getWeekNumber(date);
       const year = date.getFullYear();
       const weekLabel = `${year}-W${weekNum}`;
@@ -1306,12 +1517,10 @@ function renderTrendChart(data, mode) {
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as MM (just month)
+    // Format labels as "Week N" for weekly trend
     const formattedLabels = labels.map(weekLabel => {
-      const [year, week] = weekLabel.split('-W');
-      const firstDay = getFirstDayOfWeek(parseInt(year), parseInt(week));
-      const month = String(firstDay.getMonth() + 1).padStart(2, '0');
-      return month;
+      const weekNum = weekLabel.split('-W')[1];
+      return `W${weekNum}`;
     });
     
     if (labels.length > 0) {
@@ -1323,7 +1532,7 @@ function renderTrendChart(data, mode) {
       data: {
         labels: formattedLabels,
         datasets: [{
-          label: 'Expense Trend',
+          label: 'Weekly Expense Trend',
           data: labels.map(label => totals[label]),
           borderColor: '#8b4513',
           backgroundColor: 'rgba(139, 69, 19, 0.1)',
@@ -1338,7 +1547,7 @@ function renderTrendChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Weekly Expense Trend`
+            text: `Weekly Expense Trend (${yearLabel})`
           },
           tooltip: {
             callbacks: {
@@ -1353,7 +1562,7 @@ function renderTrendChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Week Number' 
             } 
           },
           y: { 
@@ -1367,7 +1576,7 @@ function renderTrendChart(data, mode) {
       }
     });
   } else {
-    // Monthly
+    // Monthly mode
     data.forEach(exp => {
       const month = exp.date.slice(0, 7);
       if (!totals[month]) totals[month] = 0;
@@ -1375,10 +1584,11 @@ function renderTrendChart(data, mode) {
     });
     labels = Object.keys(totals).sort();
     
-    // Format labels as just the year
+    // Format labels as "MMM" for monthly trend
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const formattedLabels = labels.map(month => {
-      const year = month.split('-')[0];
-      return year;
+      const monthNum = parseInt(month.split('-')[1]) - 1;
+      return monthNames[monthNum];
     });
     
     if (labels.length > 0) {
@@ -1390,7 +1600,7 @@ function renderTrendChart(data, mode) {
       data: {
         labels: formattedLabels,
         datasets: [{
-          label: 'Expense Trend',
+          label: 'Monthly Expense Trend',
           data: labels.map(label => totals[label]),
           borderColor: '#8b4513',
           backgroundColor: 'rgba(139, 69, 19, 0.1)',
@@ -1405,14 +1615,13 @@ function renderTrendChart(data, mode) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Monthly Expense Trend`
+            text: `Monthly Expense Trend (${yearLabel})`
           },
           tooltip: {
             callbacks: {
               title: function(context) {
                 const index = context[0].dataIndex;
                 const [year, month] = labels[index].split('-');
-                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 return `${monthNames[parseInt(month)-1]} ${year}`;
               }
             }
@@ -1422,7 +1631,7 @@ function renderTrendChart(data, mode) {
           x: { 
             title: { 
               display: true, 
-              text: `Periods in ${yearLabel}` 
+              text: 'Month' 
             } 
           },
           y: { 
@@ -1454,22 +1663,18 @@ function getFirstDayOfWeek(year, week) {
 }
 
 // ============================================
-// CHART CONTROLS
+// CHART CONTROLS (UPDATED FOR FILTERED DATA)
 // ============================================
 chartModeSelect.addEventListener('change', () => {
-  const barCategory = barCategoryFilter.value;
-  let filtered = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
-  renderChart(filtered, chartModeSelect.value);
+  updateChartsWithFilteredData();
 });
 
 barCategoryFilter.addEventListener('change', () => {
-  const barCategory = barCategoryFilter.value;
-  let filtered = barCategory === 'all' ? allExpenses : allExpenses.filter(e => e.category === barCategory);
-  renderChart(filtered, chartModeSelect.value);
+  updateChartsWithFilteredData();
 });
 
 trendModeSelect.addEventListener('change', () => {
-  renderTrendChart(allExpenses, trendModeSelect.value);
+  updateChartsWithFilteredData();
 });
 
 categoryFilter.addEventListener('change', applyFilters);
@@ -1535,6 +1740,36 @@ document.getElementById('logout-btn').addEventListener('click', () => {
   localStorage.removeItem('user');
   window.location.href = '/';
 });
+
+// ============================================
+// TABLE SORTING FUNCTIONALITY
+// ============================================
+function setupTableSorting() {
+  document.querySelectorAll('.sortable').forEach(header => {
+    header.addEventListener('click', () => {
+      const column = header.getAttribute('data-sort');
+      
+      // Toggle sort direction if same column, otherwise default to ascending
+      if (transactionSortColumn === column) {
+        transactionSortDirection = transactionSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        transactionSortColumn = column;
+        transactionSortDirection = 'asc';
+      }
+      
+      // Update UI - remove all sort classes from headers
+      document.querySelectorAll('.sortable').forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+      });
+      
+      // Add appropriate sort class to clicked header
+      header.classList.add(`sort-${transactionSortDirection}`);
+      
+      // Re-render table with sorted data
+      renderTransactionTable();
+    });
+  });
+}
 
 // ============================================
 // INITIALIZE ON PAGE LOAD
