@@ -213,15 +213,21 @@ function loadCategories() {
 }
 
 // ============================================
-// LOAD EXPENSES (WITH CHART UPDATE)
+// LOAD EXPENSES (WITH BETTER ERROR HANDLING)
 // ============================================
 function loadExpenses() {
+  console.log('Loading expenses for user:', user.id); // Debug log
+  
   fetch(`/api/expenses?user_id=${user.id}`)
     .then(res => {
-      if (!res.ok) throw new Error('Failed to load expenses');
+      console.log('Response status:', res.status); // Debug log
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       return res.json();
     })
     .then(data => {
+      console.log('Loaded expenses:', data); // Debug log
       allExpenses = data;
       populateCategoryFilter(data);
       renderTransactionTable();
@@ -237,7 +243,14 @@ function loadExpenses() {
     })
     .catch(err => {
       console.error('Error loading expenses:', err);
-      alert('Failed to load expenses. Please refresh the page.');
+      console.error('Full error details:', err.message);
+      
+      // Check if it's a network error
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        alert('Cannot connect to server. Please make sure the server is running on port 3000.\n\nTo start the server:\n1. Open terminal in backend folder\n2. Run: node server.js');
+      } else {
+        alert(`Failed to load expenses: ${err.message}\n\nCheck the browser console for more details.`);
+      }
     });
 }
 
