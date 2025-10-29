@@ -80,12 +80,20 @@ function initializeApp(user) {
       .then(data => {
         const expenseCategorySelect = document.getElementById('expense-category');
         const budgetCategorySelect = document.getElementById('budget-category');
-        expenseCategorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
-        budgetCategorySelect.innerHTML = '<option value="all">All Categories</option>';
-        data.forEach(cat => {
-          expenseCategorySelect.add(new Option(cat.name, cat.name));
-          budgetCategorySelect.add(new Option(cat.name, cat.name));
-        });
+        
+        if (expenseCategorySelect) {
+          expenseCategorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+          data.forEach(cat => {
+            expenseCategorySelect.add(new Option(cat.name, cat.name));
+          });
+        }
+        
+        if (budgetCategorySelect) {
+          budgetCategorySelect.innerHTML = '<option value="all">All Categories</option>';
+          data.forEach(cat => {
+            budgetCategorySelect.add(new Option(cat.name, cat.name));
+          });
+        }
       })
       .catch(err => console.error('Error loading expense categories:', err));
 
@@ -93,8 +101,10 @@ function initializeApp(user) {
       .then(res => res.ok ? res.json() : Promise.reject('Failed to load income categories'))
       .then(data => {
         const incomeCategorySelect = document.getElementById('income-category');
-        incomeCategorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
-        data.forEach(cat => incomeCategorySelect.add(new Option(cat.name, cat.name)));
+        if (incomeCategorySelect) {
+          incomeCategorySelect.innerHTML = '<option value="" disabled selected>Select Category</option>';
+          data.forEach(cat => incomeCategorySelect.add(new Option(cat.name, cat.name)));
+        }
       })
       .catch(err => console.error('Error loading income categories:', err));
   }
@@ -155,8 +165,10 @@ function initializeApp(user) {
   function populateCategoryFilter(data) {
     const categories = [...new Set(data.map(exp => exp.category))];
     [categoryFilter, chartCategoryFilter, barCategoryFilter].forEach(filter => {
-      filter.innerHTML = '<option value="all">All</option>';
-      categories.forEach(cat => filter.add(new Option(cat, cat)));
+      if (filter) {
+        filter.innerHTML = '<option value="all">All</option>';
+        categories.forEach(cat => filter.add(new Option(cat, cat)));
+      }
     });
   }
 
@@ -520,7 +532,12 @@ function initializeApp(user) {
 
   // Render budget tracking
   function renderBudgetTracking(budgets) {
-    const filterPeriod = document.getElementById('budget-period-filter').value;
+    if (!budgetTracking) {
+      console.warn('Budget tracking element not found');
+      return;
+    }
+    
+    const filterPeriod = document.getElementById('budget-period-filter')?.value || 'all';
     let filtered = filterPeriod !== 'all' ? budgets.filter(b => b.period === filterPeriod) : budgets;
     const today = new Date().toISOString().split('T')[0];
     const budgetsToEnd = filtered.filter(b => b.is_active && today > b.end_date).map(b => b.id);
@@ -576,6 +593,12 @@ function initializeApp(user) {
 
   // Update summary cards
   function updateSummaryCards(expenseData) {
+    const summaryCardsElement = document.getElementById('summary-cards');
+    if (!summaryCardsElement) {
+      console.warn('Summary cards element not found');
+      return;
+    }
+    
     const totalExpenses = expenseData.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
     const totalIncome = allIncome.reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
     const balance = totalIncome - totalExpenses;
@@ -590,7 +613,7 @@ function initializeApp(user) {
     const yearlyAvg = Object.keys(yearGroups).length ? (totalExpenses / Object.keys(yearGroups).length).toFixed(2) : 0;
     const dailyAvg = Object.keys(dayGroups).length ? (totalExpenses / Object.keys(dayGroups).length).toFixed(2) : 0;
 
-    document.getElementById('summary-cards').innerHTML = `
+    summaryCardsElement.innerHTML = `
       <div class="card balance-card ${balance >= 0 ? 'positive-balance' : 'negative-balance'}">Current Balance: ₱${balance.toFixed(2)}</div>
       <div class="card" id="income-card">Total Income: ₱${totalIncome.toFixed(2)}</div>
       <div class="card">Total Expenses: ₱${totalExpenses.toFixed(2)}</div>
