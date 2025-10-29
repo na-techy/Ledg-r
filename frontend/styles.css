@@ -435,6 +435,7 @@ button:active {
 }
 
 /* Date Filter for Dashboard */
+/* Date Filter for Dashboard */
 .dashboard-filters {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
@@ -448,17 +449,28 @@ button:active {
 .dashboard-filters label {
   margin-right: 0.5rem;
   font-weight: 500;
+  display: inline-block;
+  min-width: 120px;
 }
 
 .dashboard-filters select,
 .dashboard-filters input {
   margin-right: 1rem;
-  padding: 8px 12px;
+  padding: 10px 12px;
+  min-width: 150px;
+  font-size: 0.95rem;
 }
 
 .dashboard-filters button {
   padding: 8px 16px;
   margin-right: 0.5rem;
+}
+
+/* Ensure dropdowns are aligned properly */
+#trend-mode,
+#chart-mode,
+#bar-category-filter {
+  vertical-align: middle;
 }
 
 /* =========================
@@ -848,6 +860,21 @@ body.dark-mode .over-budget {
 
 .chart-tile canvas {
   max-height: 250px;
+}
+
+/* =========================
+   CENTERED PIE CHART
+========================= */
+.chart-tile-centered {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.chart-tile-centered .chart-tile {
+  max-width: 600px;
+  width: 100%;
 }
 
 /* =========================

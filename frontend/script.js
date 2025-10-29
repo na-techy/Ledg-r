@@ -119,6 +119,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     
     // Render charts with filtered data if switching to charts tab
     if (targetTab === 'charts') {
+      // Ensure currentFilteredExpenses is set
+      if (currentFilteredExpenses.length === 0) {
+        currentFilteredExpenses = [...allExpenses];
+      }
       updateChartsWithFilteredData();
     }
   });
@@ -246,13 +250,16 @@ function loadExpenses() {
       populateCategoryFilter(data);
       renderTransactionTable();
       updateSummaryCards(data);
+      
+      // Set initial filtered expenses
+      currentFilteredExpenses = data;
+      
       loadBudgets();
       
       // Update charts if on charts tab
       const chartsTab = document.getElementById('charts-tab');
       if (chartsTab && chartsTab.classList.contains('active')) {
-        // Reapply filters to update currentFilteredExpenses
-        applyFilters();
+        updateChartsWithFilteredData();
       }
     })
     .catch(err => {
@@ -281,6 +288,12 @@ function loadIncome() {
       allIncome = data;
       renderTransactionTable();
       updateSummaryCards(allExpenses);
+      
+      // Update charts if on charts tab
+      const chartsTab = document.getElementById('charts-tab');
+      if (chartsTab && chartsTab.classList.contains('active')) {
+        updateChartsWithFilteredData();
+      }
     })
     .catch(err => {
       console.error('Error loading income:', err);
@@ -402,12 +415,19 @@ function applyFilters() {
 // UPDATE CHARTS WITH FILTERED DATA
 // ============================================
 function updateChartsWithFilteredData() {
+  // Ensure we have data to work with
+  if (currentFilteredExpenses.length === 0) {
+    currentFilteredExpenses = [...allExpenses];
+  }
+  
   const barCategory = barCategoryFilter.value;
+  const trendPeriod = trendModeSelect.value;
+  
   let barFiltered = barCategory === 'all' ? currentFilteredExpenses : currentFilteredExpenses.filter(e => e.category === barCategory);
   
   renderChart(barFiltered, chartModeSelect.value);
-  renderPieChart(currentFilteredExpenses);
-  renderTrendChart(currentFilteredExpenses, trendModeSelect.value);
+  renderPieChart(currentFilteredExpenses, trendPeriod);
+  renderTrendChart(currentFilteredExpenses, trendPeriod);
 }
 
 // ============================================
@@ -515,7 +535,8 @@ function renderTransactionTable() {
     const percentage = (spent / budget.amount) * 100;
     const isOver = spent > budget.amount;
     
-    let insertIndex = allRows.findIndex(t => new Date(t.date) < new Date(displayDate));
+    // Insert budget row AFTER its end date (find first transaction BEFORE the end date)
+    let insertIndex = allRows.findIndex(t => new Date(t.date) <= new Date(displayDate));
     if (insertIndex === -1) insertIndex = allRows.length;
     
     const budgetRow = {
@@ -860,9 +881,15 @@ budgetForm.addEventListener('submit', e => {
   const data = Object.fromEntries(formData.entries());
   data.user_id = user.id;
 
-   // ADD THIS VALIDATION CHECK
-  if (!validateBudgetDates(data.start_date, data.end_date)) {
+  // SKIP VALIDATION FOR DAILY BUDGETS (end date is auto-set)
+  const period = data.period;
+  if (period !== 'daily' && !validateBudgetDates(data.start_date, data.end_date)) {
     return; // Stop submission if validation fails
+  }
+  
+  // For daily budgets, ensure end_date equals start_date
+  if (period === 'daily') {
+    data.end_date = data.start_date;
   }
 
   const submitBtn = budgetForm.querySelector('button[type="submit"]');
@@ -987,7 +1014,10 @@ function endBudget(id) {
       if (!res.ok) throw new Error('Failed to end budget');
       return res.json();
     })
-    .then(() => loadBudgets())
+    .then(() => {
+      loadBudgets();
+      renderTransactionTable(); // ADD THIS LINE
+    })
     .catch(err => {
       console.error('Error ending budget:', err);
       alert('Failed to end budget. Please try again.');
@@ -1065,6 +1095,7 @@ function renderBudgetTracking(budgets) {
     ).then(() => {
       // Only reload once after all budgets are ended
       loadBudgets();
+      renderTransactionTable(); // ADD THIS LINE
     }).catch(err => {
       console.error('Error auto-ending budgets:', err);
       // Still render the current state even if auto-end fails
@@ -1412,12 +1443,30 @@ function renderChart(data, mode) {
   }
 }
 
-function renderPieChart(data) {
+function renderPieChart(data, period = 'monthly') {
   const ctx = document.getElementById('pieChart').getContext('2d');
   if (pieChartInstance) pieChartInstance.destroy();
 
+  // Filter data based on period
+  let filteredData = data;
+  
+  if (period === 'daily') {
+    // Get last 30 days
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    filteredData = data.filter(exp => new Date(exp.date) >= thirtyDaysAgo);
+  } else if (period === 'weekly') {
+    // Get last 12 weeks
+    const today = new Date();
+    const twelveWeeksAgo = new Date(today);
+    twelveWeeksAgo.setDate(today.getDate() - 84);
+    filteredData = data.filter(exp => new Date(exp.date) >= twelveWeeksAgo);
+  }
+  // For monthly, use all data
+
   const categoryTotals = {};
-  data.forEach(exp => {
+  filteredData.forEach(exp => {
     if (!categoryTotals[exp.category]) categoryTotals[exp.category] = 0;
     categoryTotals[exp.category] += parseFloat(exp.amount);
   });
@@ -1448,7 +1497,7 @@ function renderPieChart(data) {
         },
         title: {
           display: true,
-          text: 'All Expenses by Category'
+          text: `Expenses by Category (${period.charAt(0).toUpperCase() + period.slice(1)})`
         }
       }
     }
